@@ -12,6 +12,10 @@ CRGB leds[1];
 #define SPEAKER_PIN 7
 #define MOTOR_PIN 6
 
+const int speakerChannel = 0;
+const int freqSpeaker = 2000;
+const int resolution = 8;
+
 void setup() {
     Serial.begin(921600);
     delay(2000);
@@ -23,12 +27,20 @@ void setup() {
     FastLED.addLeds<WS2812B, STATUS_LED_PIN, GRB>(leds, 1);
     FastLED.setBrightness(127);
 
+    ledcSetup(speakerChannel, freqSpeaker, resolution);
+    ledcAttachPin(SPEAKER_PIN, speakerChannel);
+
     pinMode(MOTOR_PIN, OUTPUT);
 
     Serial.println("System ready!");
 }
 
 void test() {
+    Serial.println("Play test tone 3000hz...");
+    ledcWriteTone(speakerChannel, 3000);
+    delay(100);
+    ledcWriteTone(speakerChannel, 0);
+
     Serial.println("Motor starts up...");
     for (int dutyCycle = 0; dutyCycle <= 255; dutyCycle++) {
         analogWrite(MOTOR_PIN, dutyCycle);
