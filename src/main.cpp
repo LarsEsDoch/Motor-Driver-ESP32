@@ -16,6 +16,7 @@ const int speakerChannel = 0;
 const int freqSpeaker = 2000;
 const int resolution = 8;
 
+uint8_t motorSpeed = 0;
 void setup() {
     Serial.begin(921600);
     delay(2000);
@@ -56,7 +57,36 @@ void test() {
         delay(20);
     }
 }
+
+void readPot() {
+    static float smoothedPot = 0;
+
+    static float lastTriggeredPot = 0;
+
+    const float ADC_MIN = 100.0f;
+    const float ADC_MAX = 4000.0f;
+
+    const float ADC_TOLERANCE = 25.0f;
+
+    int raw = analogRead(POT_PIN);
+
+    smoothedPot = (smoothedPot * 0.9f) + (raw * 0.1f);
+
+    if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
+        lastTriggeredPot = smoothedPot;
+
+        float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
+
+        uint8_t newSpeed = static_cast<uint8_t>((constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN) * 255.0f);
+
+        motorSpeed = newSpeed;
+        analogWrite(MOTOR_PIN, motorSpeed);
+    }
+}
+
 void loop() {
+    readPot();
+
     FastLED.setBrightness(127);
     leds[0] = CRGB::Green;
     FastLED.show();
