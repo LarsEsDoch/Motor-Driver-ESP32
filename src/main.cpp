@@ -17,6 +17,8 @@ const int freqSpeaker = 2000;
 const int resolution = 8;
 
 uint8_t motorSpeed = 0;
+bool emergencyStop = false;
+
 void setup() {
     Serial.begin(921600);
     delay(2000);
@@ -85,6 +87,11 @@ void readPot() {
 }
 
 void loop() {
+    if (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW) {
+        emergencyStop = !emergencyStop;
+        ledcWriteTone(speakerChannel, 0);
+        delay(500);
+    }
     readPot();
 
     FastLED.setBrightness(127);
