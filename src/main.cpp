@@ -5,12 +5,13 @@
 
 CRGB leds[1];
 
-#define POT_PIN 4
+#define POT_PIN 15
+#define CALIBRATE_BUTTON_PIN 16
+#define EMERGENCY_STOP_BUTTON_PIN 17
 
-#define EMERGENCY_STOP_BUTTON_PIN 5
+#define MOTOR_PIN 14
 
-#define SPEAKER_PIN 7
-#define MOTOR_PIN 6
+#define SPEAKER_PIN 4
 
 const int speakerChannel = 0;
 const int freqSpeaker = 2000;
