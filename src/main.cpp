@@ -42,9 +42,14 @@ void setup() {
 }
 
 void test() {
-    Serial.println("Play test tone 3000hz...");
-    ledcWriteTone(speakerChannel, 3000);
-    delay(100);
+    Serial.println("Starting Frequency Sweep (200Hz - 10000Hz)...");
+
+    for (int freq = 100; freq <= 20000; freq += 100) {
+        ledcWriteTone(speakerChannel, freq);
+        Serial.printf("Frequency: %i\n", freq);
+        delay(40);
+    }
+
     ledcWriteTone(speakerChannel, 0);
 
     Serial.println("Motor starts up...");
