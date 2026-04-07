@@ -92,6 +92,22 @@ void loop() {
         ledcWriteTone(speakerChannel, 0);
         delay(500);
     }
+
+    if (emergencyStop == true) {
+        motorSpeed = 0;
+        analogWrite(MOTOR_PIN, motorSpeed);
+
+        uint8_t pulse = beatsin8(40, 50, 255);
+        leds[0] = CRGB::Red;
+        FastLED.setBrightness(pulse);
+        FastLED.show();
+
+        uint16_t sirenFreq = beatsin16(40, 600, 1200);
+        ledcWriteTone(speakerChannel, sirenFreq);
+
+        return;
+    }
+
     readPot();
 
     FastLED.setBrightness(127);
