@@ -129,6 +129,11 @@ void loop() {
 
     if (emergencyStop == true) {
     if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
+        if (!buttonWasPressed) {
+            buttonPressStartTime = millis();
+            buttonWasPressed = true;
+        } else {
+            if (millis() - buttonPressStartTime >= 3000) {
                 testing = !testing;
 
                 ledcWriteTone(speakerChannel, 2000);
@@ -138,6 +143,23 @@ void loop() {
                 buttonWasPressed = false;
                 Serial.printf("Test mode %s\n", testing ? "activated" : "deactivated");
             }
+        }
+    } else {
+        if (buttonWasPressed) {
+            if (millis() - buttonPressStartTime < 3000) {
+                calibrating = true;
+
+                ledcWriteTone(speakerChannel, 2000);
+                delay(100);
+                ledcWriteTone(speakerChannel, 0);
+
+                Serial.println("Calibration started.");
+            }
+            buttonWasPressed = false;
+        }
+    }
+
+    if (emergencyStop) {
         motorSpeed = 0;
         analogWrite(MOTOR_PIN, motorSpeed);
 
