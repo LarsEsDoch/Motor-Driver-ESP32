@@ -26,12 +26,13 @@ void setup() {
     Serial.begin(921600);
     delay(2000);
 
-    pinMode(EMERGENCY_STOP_BUTTON_PIN, INPUT_PULLUP);
-
     pinMode(STATUS_LED_PIN, OUTPUT);
 
     FastLED.addLeds<WS2812B, STATUS_LED_PIN, GRB>(leds, 1);
     FastLED.setBrightness(127);
+
+    pinMode(EMERGENCY_STOP_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(CALIBRATE_BUTTON_PIN, INPUT_PULLUP);
 
     ledcSetup(speakerChannel, freqSpeaker, resolution);
     ledcAttachPin(SPEAKER_PIN, speakerChannel);
@@ -121,11 +122,22 @@ void readPot() {
 void loop() {
     if (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW) {
         emergencyStop = !emergencyStop;
+        testing = false;
         ledcWriteTone(speakerChannel, 0);
         delay(500);
     }
 
     if (emergencyStop == true) {
+    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
+                testing = !testing;
+
+                ledcWriteTone(speakerChannel, 2000);
+                delay(100);
+                ledcWriteTone(speakerChannel, 0);
+
+                buttonWasPressed = false;
+                Serial.printf("Test mode %s\n", testing ? "activated" : "deactivated");
+            }
         motorSpeed = 0;
         analogWrite(MOTOR_PIN, motorSpeed);
 
@@ -140,13 +152,17 @@ void loop() {
         return;
     }
 
+
+    if (testing) {
+        test();
+        return;
+    }
+
     readPot();
 
     FastLED.setBrightness(127);
     leds[0] = CRGB::Green;
     FastLED.show();
-    
-    test();
 
     delay(10);
 }
