@@ -98,8 +98,8 @@ void readPot() {
 
     static float lastTriggeredPot = 0;
 
-    const float ADC_MIN = 100.0f;
-    const float ADC_MAX = 4000.0f;
+    const float ADC_MIN = 50.0f;
+    const float ADC_MAX = 4046.0f;
 
     const float ADC_TOLERANCE = 25.0f;
 
@@ -123,11 +123,14 @@ void loop() {
     if (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW) {
         emergencyStop = !emergencyStop;
         testing = false;
+        calibrating = false;
         ledcWriteTone(speakerChannel, 0);
         delay(500);
     }
 
-    if (emergencyStop == true) {
+    static uint32_t buttonPressStartTime = 0;
+    static bool buttonWasPressed = false;
+
     if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
         if (!buttonWasPressed) {
             buttonPressStartTime = millis();
@@ -174,6 +177,7 @@ void loop() {
         return;
     }
 
+    if (calibrating)
 
     if (testing) {
         test();
@@ -182,7 +186,7 @@ void loop() {
 
     readPot();
 
-    FastLED.setBrightness(127);
+    FastLED.setBrightness(motorSpeed);
     leds[0] = CRGB::Green;
     FastLED.show();
 
