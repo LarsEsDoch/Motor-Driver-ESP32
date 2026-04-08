@@ -18,6 +18,17 @@ const int freqSpeaker = 2000;
 const int resolution = 8;
 
 uint8_t motorSpeed = 0;
+
+uint8_t minStartDuty = 0;
+
+const float ADC_MIN = 50.0f;
+const float ADC_MAX = 4046.0f;
+const float ADC_TOLERANCE = 25.0f;
+
+static float smoothedPot = 0;
+
+static float lastTriggeredPot = 0;
+
 bool emergencyStop = false;
 bool calibrating = false;
 bool testing = false;
@@ -103,16 +114,18 @@ void readPot() {
 
     const float ADC_TOLERANCE = 25.0f;
 
+void readPot() {
     int raw = analogRead(POT_PIN);
-
     smoothedPot = (smoothedPot * 0.9f) + (raw * 0.1f);
+}
 
+void adjustSpeed() {
     if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
         lastTriggeredPot = smoothedPot;
 
         float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
 
-        uint8_t newSpeed = static_cast<uint8_t>((constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN) * 255.0f);
+        uint8_t newSpeed = static_cast<uint8_t>(((constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN) * (255.0f - minStartDuty)) + minStartDuty);
 
         motorSpeed = newSpeed;
         analogWrite(MOTOR_PIN, motorSpeed);
