@@ -51,19 +51,28 @@ void test() {
     }
 
     ledcWriteTone(speakerChannel, 0);
+    Serial.println("Sweep finished.");
 
     Serial.println("Motor starts up...");
     for (int dutyCycle = 0; dutyCycle <= 255; dutyCycle++) {
         analogWrite(MOTOR_PIN, dutyCycle);
+        Serial.printf("Speed: %i\n", dutyCycle);
         delay(20);
     }
 
     Serial.println("Maximum speed reached.");
-    delay(3000);
+    delay(1000);
+    Serial.println("3");
+    delay(1000);
+    Serial.println("2");
+    delay(1000);
+    Serial.println("1");
+    delay(1000);
 
     Serial.println("Motor slows down...");
     for (int dutyCycle = 255; dutyCycle >= 0; dutyCycle--) {
         analogWrite(MOTOR_PIN, dutyCycle);
+        Serial.printf("Speed: %i\n", dutyCycle);
         delay(20);
     }
 
