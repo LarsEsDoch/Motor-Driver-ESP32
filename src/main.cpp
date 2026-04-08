@@ -31,6 +31,7 @@ static float lastTriggeredPot = 0;
 
 bool emergencyStop = false;
 bool calibrating = false;
+int calibrateStep = 0;
 bool testing = false;
 
 void setup() {
@@ -104,16 +105,21 @@ void test() {
     Serial.println("Finished test.");
 }
 
-void readPot() {
-    static float smoothedPot = 0;
-
-    static float lastTriggeredPot = 0;
-
-    const float ADC_MIN = 50.0f;
-    const float ADC_MAX = 4046.0f;
-
-    const float ADC_TOLERANCE = 25.0f;
 void calibrate() {
+    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
+        switch (calibrateStep) {
+            case 0:
+                minStartDuty = motorSpeed;
+                calibrateStep = 1;
+                Serial.printf("Calibration finished. Set min duty cycle to %hhu\n", minStartDuty);
+                delay(300);
+                break;
+            case 1:
+                calibrating = false;
+                calibrateStep = 0;
+                break;
+        }
+    }
 }
 
 void readPot() {
@@ -139,6 +145,7 @@ void loop() {
         emergencyStop = !emergencyStop;
         testing = false;
         calibrating = false;
+        calibrateStep = 0;
         ledcWriteTone(speakerChannel, 0);
         delay(500);
     }
@@ -166,6 +173,7 @@ void loop() {
         if (buttonWasPressed) {
             if (millis() - buttonPressStartTime < 3000) {
                 calibrating = true;
+                minStartDuty = 0;
 
                 ledcWriteTone(speakerChannel, 2000);
                 delay(100);
