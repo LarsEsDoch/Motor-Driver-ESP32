@@ -113,6 +113,8 @@ void readPot() {
     const float ADC_MAX = 4046.0f;
 
     const float ADC_TOLERANCE = 25.0f;
+void calibrate() {
+}
 
 void readPot() {
     int raw = analogRead(POT_PIN);
@@ -144,7 +146,7 @@ void loop() {
     static uint32_t buttonPressStartTime = 0;
     static bool buttonWasPressed = false;
 
-    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
+    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW && !calibrating) {
         if (!buttonWasPressed) {
             buttonPressStartTime = millis();
             buttonWasPressed = true;
@@ -190,14 +192,17 @@ void loop() {
         return;
     }
 
-    if (calibrating)
+    if (calibrating) {
+        calibrate();
+    }
 
-    if (testing) {
+    if (testing && !calibrating) {
         test();
         return;
     }
 
     readPot();
+    adjustSpeed();
 
     FastLED.setBrightness(motorSpeed);
     leds[0] = CRGB::Green;
