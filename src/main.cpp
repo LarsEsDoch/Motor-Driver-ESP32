@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include <FastLED.h>
+#include <Preferences.h>
+
+Preferences preferences;
 
 #define STATUS_LED_PIN 48
 
@@ -39,6 +42,11 @@ uint8_t ledBrightness = 0;
 void setup() {
     Serial.begin(921600);
     delay(2000);
+
+    preferences.begin("motor-settings", false);
+
+    minStartDuty = preferences.getUChar("minDuty", 0);
+    if (minStartDuty != 0) Serial.println("Reused min start duty out of preferences.");
 
     pinMode(STATUS_LED_PIN, OUTPUT);
 
@@ -113,6 +121,8 @@ void calibrate() {
             case 0:
                 minStartDuty = motorSpeed;
                 calibrateStep = 1;
+                preferences.putUChar("minDuty", minStartDuty);
+                preferences.end();
                 Serial.printf("Calibration finished. Set min duty cycle to %hhu\n", minStartDuty);
                 delay(300);
                 break;
