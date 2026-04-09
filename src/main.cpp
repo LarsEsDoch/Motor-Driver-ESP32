@@ -16,6 +16,8 @@ CRGB leds[1];
 
 #define SPEAKER_PIN 4
 
+#define SENSOR_PIN 12
+
 const int speakerChannel = 0;
 const int freqSpeaker = 2000;
 const int resolution = 8;
@@ -39,9 +41,46 @@ bool testing = false;
 
 uint8_t ledBrightness = 0;
 
+int workingMode = 1;
+
+bool debug = true;
+
+
+volatile bool firstIntervalSeeded = false;
+
+void IRAM_ATTR pulseISR() {
+    uint32_t now = micros();
+
+    if (lastPulseMicros == 0) {
+        lastPulseMicros = now;
+        return;
+    }
+
+    uint32_t duration = now - lastPulseMicros;
+    uint32_t minDuration = (latestDuration > 0) ? (latestDuration / 2) : 5000;
+    if (minDuration < 5000) minDuration = 5000;
+
+    if (duration > minDuration) {
+        lastPulseMicros = now;
+
+        if (!firstIntervalSeeded) {
+            latestDuration = duration;
+            firstIntervalSeeded = true;
+            return;
+        }
+
+        latestDuration = duration;
+        newPulseReceived = true;
+        debugTickCount++;
+    }
+}
+
 void setup() {
     Serial.begin(921600);
     delay(2000);
+
+    pinMode(SENSOR_PIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(SENSOR_PIN), pulseISR, RISING);
 
     preferences.begin("motor-settings", false);
 
