@@ -34,6 +34,8 @@ bool calibrating = false;
 int calibrateStep = 0;
 bool testing = false;
 
+uint8_t ledBrightness = 0;
+
 void setup() {
     Serial.begin(921600);
     delay(2000);
@@ -131,11 +133,19 @@ void adjustSpeed() {
     if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
         lastTriggeredPot = smoothedPot;
 
-        float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
+        if (smoothedPot < (ADC_MIN + ADC_TOLERANCE)) {
+            motorSpeed = 0;
+            ledBrightness = 0;
+        } else {
+            float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
 
-        uint8_t newSpeed = static_cast<uint8_t>(((constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN) * (255.0f - minStartDuty)) + minStartDuty);
+            float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
 
-        motorSpeed = newSpeed;
+            motorSpeed = static_cast<uint8_t>((percent * (255.0f - minStartDuty)) + minStartDuty);
+
+            ledBrightness = static_cast<uint8_t>(percent * 255.0f);
+        }
+
         analogWrite(MOTOR_PIN, motorSpeed);
     }
 }
@@ -212,8 +222,9 @@ void loop() {
     readPot();
     adjustSpeed();
 
-    FastLED.setBrightness(motorSpeed);
-    leds[0] = CRGB::Green;
+    FastLED.setBrightness(ledBrightness);
+    uint8_t currentHue = map(motorSpeed, minStartDuty, 255, 160, 0);
+    leds[0] = CHSV(currentHue, 255, 255);
     FastLED.show();
 
     delay(10);
