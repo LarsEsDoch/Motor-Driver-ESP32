@@ -20,11 +20,17 @@ CRGB leds[1];
 
 const int speakerChannel = 0;
 const int freqSpeaker = 2000;
-const int resolution = 8;
+const int resolutionSpeaker = 8;
 
-uint8_t motorSpeed = 0;
+uint16_t motorSpeed = 0;
 
-float currentSpeed = 0;
+uint16_t minStartDuty = 0;
+
+const int motorChannel = 1;
+const int freqMotor = 19531;
+const int resolutionMotor = 12;
+
+uint16_t currentSpeed = 0;
 float accelInertia = 0.5f;
 float decelInertia = 0.25f;
 
@@ -35,8 +41,6 @@ volatile bool newPulseReceived = false;
 volatile float currentRPM = 0;
 
 volatile uint32_t debugTickCount = 0;
-
-uint8_t minStartDuty = 0;
 
 const float ADC_MIN = 50.0f;
 const float ADC_MAX = 4046.0f;
@@ -107,7 +111,7 @@ void setup() {
     pinMode(EMERGENCY_STOP_BUTTON_PIN, INPUT_PULLUP);
     pinMode(CALIBRATE_BUTTON_PIN, INPUT_PULLUP);
 
-    ledcSetup(speakerChannel, freqSpeaker, resolution);
+    ledcSetup(speakerChannel, freqSpeaker, resolutionSpeaker);
     ledcAttachPin(SPEAKER_PIN, speakerChannel);
 
     pinMode(MOTOR_PIN, OUTPUT);
