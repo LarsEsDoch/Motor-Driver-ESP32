@@ -26,7 +26,7 @@ uint8_t minStartDuty = 0;
 
 const float ADC_MIN = 50.0f;
 const float ADC_MAX = 4046.0f;
-const float ADC_TOLERANCE = 25.0f;
+const float ADC_TOLERANCE = 40.0f;
 
 static float smoothedPot = 0;
 
@@ -46,7 +46,7 @@ void setup() {
     preferences.begin("motor-settings", false);
 
     minStartDuty = preferences.getUChar("minDuty", 0);
-    if (minStartDuty != 0) Serial.println("Reused min start duty out of preferences.");
+    if (minStartDuty != 0) Serial.println("\nReused min start duty out of preferences.\n");
 
     pinMode(STATUS_LED_PIN, OUTPUT);
 
@@ -61,7 +61,8 @@ void setup() {
 
     pinMode(MOTOR_PIN, OUTPUT);
 
-    Serial.println("System ready!");
+    Serial.println("System ready!\n");
+}
 }
 
 void test() {
@@ -121,9 +122,13 @@ void calibrate() {
             case 0:
                 minStartDuty = motorSpeed;
                 calibrateStep = 1;
+
+                preferences.begin("motor-settings", false);
                 preferences.putUChar("minDuty", minStartDuty);
                 preferences.end();
+
                 Serial.printf("Calibration finished. Set min duty cycle to %hhu\n", minStartDuty);
+                playClick(1000, 100);
                 delay(300);
                 break;
             case 1:
