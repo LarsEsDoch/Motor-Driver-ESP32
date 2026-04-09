@@ -63,6 +63,11 @@ void setup() {
 
     Serial.println("System ready!\n");
 }
+
+void playClick(int freq, int duration) {
+    ledcWriteTone(speakerChannel, freq);
+    delay(duration);
+    ledcWriteTone(speakerChannel, 0);
 }
 
 void test() {
@@ -147,6 +152,7 @@ void readPot() {
 void adjustSpeed() {
     if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
         lastTriggeredPot = smoothedPot;
+        playClick(150, 10);
 
         if (smoothedPot < (ADC_MIN + ADC_TOLERANCE)) {
             motorSpeed = 0;
@@ -186,9 +192,7 @@ void loop() {
             if (millis() - buttonPressStartTime >= 3000) {
                 testing = !testing;
 
-                ledcWriteTone(speakerChannel, 2000);
-                delay(100);
-                ledcWriteTone(speakerChannel, 0);
+                playClick(2000, 100);
 
                 buttonWasPressed = false;
                 Serial.printf("Test mode %s\n", testing ? "activated" : "deactivated");
@@ -200,9 +204,7 @@ void loop() {
                 calibrating = true;
                 minStartDuty = 0;
 
-                ledcWriteTone(speakerChannel, 2000);
-                delay(100);
-                ledcWriteTone(speakerChannel, 0);
+                playClick(2000, 100);
 
                 Serial.println("Calibration started.");
             }
