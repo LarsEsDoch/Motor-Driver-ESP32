@@ -24,6 +24,18 @@ const int resolution = 8;
 
 uint8_t motorSpeed = 0;
 
+float currentSpeed = 0;
+float accelInertia = 0.5f;
+float decelInertia = 0.25f;
+
+volatile uint32_t lastPulseMicros = 0;
+volatile uint32_t latestDuration = 0;
+volatile bool newPulseReceived = false;
+
+volatile float currentRPM = 0;
+
+volatile uint32_t debugTickCount = 0;
+
 uint8_t minStartDuty = 0;
 
 const float ADC_MIN = 50.0f;
@@ -211,6 +223,22 @@ void adjustSpeed() {
 }
 
 void loop() {
+    if (newPulseReceived) {
+        currentRPM = 60000000.0f / latestDuration;
+        newPulseReceived = false;
+    }
+
+    if (micros() - lastPulseMicros > 1000000) {
+        currentRPM = 0;
+    }
+
+    static uint32_t lastSeenTick = 0;
+
+    if (debugTickCount != lastSeenTick && debug) {
+        Serial.printf("Rotation: %u | RPM: %.2f\n", debugTickCount, currentRPM);
+        lastSeenTick = debugTickCount;
+    }
+
     if (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW) {
         emergencyStop = !emergencyStop;
         testing = false;
