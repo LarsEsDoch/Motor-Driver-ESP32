@@ -100,7 +100,7 @@ void setup() {
 
     preferences.begin("motor-settings", false);
 
-    minStartDuty = preferences.getUChar("minDuty", 0);
+    minStartDuty = preferences.getUShort("minDuty", 0);
     if (minStartDuty != 0) Serial.println("\nReused min start duty out of preferences.\n");
 
     pinMode(STATUS_LED_PIN, OUTPUT);
@@ -114,7 +114,8 @@ void setup() {
     ledcSetup(speakerChannel, freqSpeaker, resolutionSpeaker);
     ledcAttachPin(SPEAKER_PIN, speakerChannel);
 
-    pinMode(MOTOR_PIN, OUTPUT);
+    ledcSetup(motorChannel, freqMotor, resolutionMotor);
+    ledcAttachPin(MOTOR_PIN, motorChannel);
 
     Serial.println("System ready!\n");
 }
@@ -138,8 +139,8 @@ void test() {
     Serial.println("Sweep finished.");
 
     Serial.println("Motor starts up...");
-    for (int dutyCycle = 0; dutyCycle <= 255; dutyCycle++) {
-        analogWrite(MOTOR_PIN, dutyCycle);
+    for (int dutyCycle = 0; dutyCycle <= 4095; dutyCycle += 8) {
+        ledcWrite(motorChannel, dutyCycle);
         Serial.printf("Speed: %i\n", dutyCycle);
         delay(20);
     }
@@ -154,8 +155,8 @@ void test() {
     delay(1000);
 
     Serial.println("Motor slows down...");
-    for (int dutyCycle = 255; dutyCycle >= 0; dutyCycle--) {
-        analogWrite(MOTOR_PIN, dutyCycle);
+    for (int dutyCycle = 4095; dutyCycle >= 0; dutyCycle -= 8) {
+        ledcWrite(motorChannel, dutyCycle);
         Serial.printf("Speed: %i\n", dutyCycle);
         delay(20);
     }
@@ -170,7 +171,7 @@ void test() {
         delay(15);
     }
     leds[0] = CRGB::White;
-    FastLED.setBrightness(motorSpeed);
+    FastLED.setBrightness(ledBrightness);
     FastLED.show();
 
     Serial.println("Finished test.");
@@ -184,7 +185,7 @@ void calibrate() {
                 calibrateStep = 1;
 
                 preferences.begin("motor-settings", false);
-                preferences.putUChar("minDuty", minStartDuty);
+                preferences.putUShort("minDuty", minStartDuty);
                 preferences.end();
 
                 Serial.printf("Calibration finished. Set min duty cycle to %hhu\n", minStartDuty);
@@ -217,12 +218,12 @@ void adjustSpeed() {
 
             float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
 
-            motorSpeed = static_cast<uint8_t>((percent * (255.0f - minStartDuty)) + minStartDuty);
+            motorSpeed = static_cast<uint16_t>((percent * (4095.0f - minStartDuty)) + minStartDuty);
 
             ledBrightness = static_cast<uint8_t>(percent * 255.0f);
         }
 
-        analogWrite(MOTOR_PIN, motorSpeed);
+        ledcWrite(motorChannel, motorSpeed);
     }
 }
 
@@ -239,7 +240,7 @@ void loop() {
     static uint32_t lastSeenTick = 0;
 
     if (debugTickCount != lastSeenTick && debug) {
-        Serial.printf("Rotation: %u | RPM: %.2f\n", debugTickCount, currentRPM);
+        Serial.printf("Rotation: %u | RPM: %.2f | Motor speed: %hu\n", debugTickCount, currentRPM, motorSpeed);
         lastSeenTick = debugTickCount;
     }
 
@@ -285,7 +286,7 @@ void loop() {
 
     if (emergencyStop) {
         motorSpeed = 0;
-        analogWrite(MOTOR_PIN, motorSpeed);
+        ledcWrite(motorChannel, 0);
 
         uint8_t pulse = beatsin8(40, 50, 255);
         leds[0] = CRGB::Red;
@@ -295,6 +296,7 @@ void loop() {
         uint16_t sirenFreq = beatsin16(40, 600, 1200);
         ledcWriteTone(speakerChannel, sirenFreq);
 
+        delay(10);
         return;
     }
 
@@ -311,7 +313,7 @@ void loop() {
     adjustSpeed();
 
     FastLED.setBrightness(ledBrightness);
-    uint8_t currentHue = map(motorSpeed, minStartDuty, 255, 160, 0);
+    uint8_t currentHue = map(motorSpeed, minStartDuty, 4095, 160, 0);
     leds[0] = CHSV(currentHue, 255, 255);
     FastLED.show();
 
