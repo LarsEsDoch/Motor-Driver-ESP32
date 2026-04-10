@@ -39,6 +39,7 @@ volatile uint32_t latestDuration = 0;
 volatile bool newPulseReceived = false;
 
 volatile float currentRPM = 0;
+volatile float smoothedRPM = 0;
 
 volatile uint32_t debugTickCount = 0;
 
@@ -60,7 +61,6 @@ uint8_t ledBrightness = 0;
 int workingMode = 1;
 
 bool debug = true;
-
 
 volatile bool firstIntervalSeeded = false;
 
@@ -102,6 +102,7 @@ void setup() {
 
     minStartDuty = preferences.getUShort("minDuty", 0);
     if (minStartDuty != 0) Serial.println("\nReused min start duty out of preferences.\n");
+    preferences.end();
 
     pinMode(STATUS_LED_PIN, OUTPUT);
 
@@ -153,6 +154,8 @@ void test() {
     delay(1000);
     Serial.println("1");
     delay(1000);
+    Serial.println("0");
+    delay(1000);
 
     Serial.println("Motor slows down...");
     for (int dutyCycle = 4095; dutyCycle >= 0; dutyCycle -= 8) {
@@ -188,15 +191,18 @@ void calibrate() {
                 preferences.putUShort("minDuty", minStartDuty);
                 preferences.end();
 
-                Serial.printf("Calibration finished. Set min duty cycle to %hhu\n", minStartDuty);
+                Serial.println("Saved settings to flash storage.");
                 playClick(1000, 100);
-                delay(300);
-                break;
-            case 1:
                 calibrating = false;
                 calibrateStep = 0;
                 break;
         }
+        delay(300);
+    }
+
+    switch (calibrateStep) {
+        case 1:
+            calibrateStep = 2;
     }
 }
 
@@ -237,10 +243,12 @@ void loop() {
         currentRPM = 0;
     }
 
+    smoothedRPM = (smoothedRPM * 0.8f) + (currentRPM * 0.2f);
+
     static uint32_t lastSeenTick = 0;
 
     if (debugTickCount != lastSeenTick && debug) {
-        Serial.printf("Rotation: %u | RPM: %.2f | Motor speed: %hu\n", debugTickCount, currentRPM, motorSpeed);
+        Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Motor speed: %hu\n", debugTickCount, currentRPM, smoothedRPM, motorSpeed);
         lastSeenTick = debugTickCount;
     }
 
@@ -311,6 +319,7 @@ void loop() {
 
     readPot();
     adjustSpeed();
+    controlRPM();
 
     FastLED.setBrightness(ledBrightness);
     uint8_t currentHue = map(motorSpeed, minStartDuty, 4095, 160, 0);
