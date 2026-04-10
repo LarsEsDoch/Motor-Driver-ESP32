@@ -10,7 +10,8 @@ CRGB leds[1];
 
 #define POT_PIN 15
 #define CALIBRATE_BUTTON_PIN 16
-#define EMERGENCY_STOP_BUTTON_PIN 17
+#define MODE_BUTTON_PIN 17
+#define EMERGENCY_STOP_BUTTON_PIN 18
 
 #define MOTOR_PIN 14
 
@@ -59,9 +60,9 @@ bool testing = false;
 
 uint8_t ledBrightness = 0;
 
-int workingMode = 1;
 
 bool debug = true;
+int controlMode = 0;
 
 volatile bool firstIntervalSeeded = false;
 
@@ -291,8 +292,31 @@ void loop() {
         delay(500);
     }
 
-    static uint32_t buttonPressStartTime = 0;
-    static bool buttonWasPressed = false;
+    static uint32_t modeButtonPressStartTime = 0;
+    static bool modeButtonWasPressed = false;
+    bool modeActionExecuted = false;
+
+    if (digitalRead(MODE_BUTTON_PIN) == LOW) {
+        if (!modeButtonWasPressed) {
+            modeButtonPressStartTime = millis();
+            modeButtonWasPressed = true;
+            modeActionExecuted = false;
+        } else {
+            if (!modeActionExecuted && millis() - modeButtonPressStartTime >= 3000) {
+            }
+        }
+    } else {
+        if (modeButtonWasPressed) {
+            if (!modeActionExecuted && millis() - modeButtonPressStartTime < 3000) {
+                controlMode = (controlMode == 0) ? 1 : 0;
+                Serial.printf("Control mode got set to %s\n", controlMode == 1 ? "rpm" : "voltage (duty cycle)");
+                playClick(2000, 100);
+            }
+            modeButtonWasPressed = false;
+            modeActionExecuted = false;
+        }
+    }
+
 
     if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW && !calibrating) {
         if (!buttonWasPressed) {
@@ -348,8 +372,13 @@ void loop() {
     }
 
     readPot();
-    adjustSpeed();
-    controlRPM();
+    if (!calibrating || calibrateStep == 1) {
+        if (controlMode == 0) {
+            adjustSpeed();
+        } else if (controlMode == 1) {
+            controlRPM();
+        }
+    }
 
     FastLED.setBrightness(ledBrightness);
     uint8_t currentHue = map(motorSpeed, minStartDuty, 4095, 160, 0);
