@@ -26,8 +26,8 @@ uint16_t motorSpeed = 0;
 
 uint16_t minStartDuty = 0;
 
-const int motorChannel = 1;
-const int freqMotor = 19531;
+const int motorChannel = 2;
+const int freqMotor = 8000;
 const int resolutionMotor = 12;
 
 uint16_t currentSpeed = 0;
