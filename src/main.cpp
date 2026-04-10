@@ -40,6 +40,7 @@ volatile bool newPulseReceived = false;
 
 volatile float currentRPM = 0;
 volatile float smoothedRPM = 0;
+float maxRPM = 2000.0f;
 
 volatile uint32_t debugTickCount = 0;
 
@@ -101,7 +102,9 @@ void setup() {
     preferences.begin("motor-settings", false);
 
     minStartDuty = preferences.getUShort("minDuty", 0);
-    if (minStartDuty != 0) Serial.println("\nReused min start duty out of preferences.\n");
+    if (minStartDuty != 0) Serial.printf("\nReused min start duty of %hu out of preferences.\n", minStartDuty);
+    maxRPM = preferences.getFloat("maxRPM", 2000);
+    if (maxRPM != 2000) Serial.printf("\nReused Max RPM of %f out of preferences.\n", maxRPM);
     preferences.end();
 
     pinMode(STATUS_LED_PIN, OUTPUT);
@@ -187,22 +190,50 @@ void calibrate() {
                 minStartDuty = motorSpeed;
                 calibrateStep = 1;
 
-                preferences.begin("motor-settings", false);
-                preferences.putUShort("minDuty", minStartDuty);
-                preferences.end();
-
-                Serial.println("Saved settings to flash storage.");
-                playClick(1000, 100);
-                calibrating = false;
-                calibrateStep = 0;
+                Serial.printf("Speed calibration finished. Set min duty cycle to %hhu\n", minStartDuty);
+                Serial.println("Continuing with motor max speed");
+                playClick(1500, 100);
                 break;
         }
         delay(300);
     }
 
     switch (calibrateStep) {
-        case 1:
-            calibrateStep = 2;
+        case 1: {
+            ledcWrite(motorChannel, 4095);
+
+            uint32_t now = millis();
+            if (now - lastCheckTime >= 100) {
+                float deltaTime = (now - lastCheckTime) / 1000.0f;
+
+                acceleration = (smoothedRPM - lastRPM) / deltaTime;
+
+                if (abs(acceleration) < 5.0f && smoothedRPM > 500) {
+                    maxRPM = smoothedRPM;
+                    Serial.printf("Set maximum RPM to: %f", maxRPM);
+                    playClick(1800, 200);
+                    calibrateStep = 2;
+                }
+
+                lastRPM = smoothedRPM;
+                lastCheckTime = now;
+            }
+            break;
+        }
+        case 2:
+        case 3:
+            Serial.println("Calibration finished.");
+
+            preferences.begin("motor-settings", false);
+            preferences.putUShort("minDuty", minStartDuty);
+            preferences.putFloat("maxRPM", maxRPM);
+            preferences.end();
+
+            Serial.println("Saved settings to flash storage.");
+            playClick(1000, 100);
+            calibrating = false;
+            calibrateStep = 0;
+            break;
     }
 }
 
@@ -237,18 +268,17 @@ void loop() {
     if (newPulseReceived) {
         currentRPM = 60000000.0f / latestDuration;
         newPulseReceived = false;
+        smoothedRPM = (smoothedRPM * 0.8f) + (currentRPM * 0.2f);
     }
 
     if (micros() - lastPulseMicros > 1000000) {
         currentRPM = 0;
     }
 
-    smoothedRPM = (smoothedRPM * 0.8f) + (currentRPM * 0.2f);
-
     static uint32_t lastSeenTick = 0;
 
     if (debugTickCount != lastSeenTick && debug) {
-        Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Motor speed: %hu\n", debugTickCount, currentRPM, smoothedRPM, motorSpeed);
+        Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Target RPM: %.2f | Motor speed: %hu | Current speed: %.2hu\n", debugTickCount, currentRPM, smoothedRPM, targetRPM, motorSpeed, currentSpeed);
         lastSeenTick = debugTickCount;
     }
 
