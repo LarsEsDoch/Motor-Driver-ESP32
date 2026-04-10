@@ -131,7 +131,7 @@ void setup() {
 
     pinMode(STATUS_LED_PIN, OUTPUT);
 
-    FastLED.addLeds<WS2812B, STATUS_LED_PIN, GRB>(leds, 1);
+    CFastLED::addLeds<WS2812B, STATUS_LED_PIN, GRB>(leds, 1);
     FastLED.setBrightness(127);
 
     pinMode(EMERGENCY_STOP_BUTTON_PIN, INPUT_PULLUP);
@@ -231,6 +231,8 @@ void calibrate() {
                 playClick(1000, 100);
                 calibrating = false;
                 calibrateStep = 0;
+                break;
+            default:
                 break;
         }
         delay(300);
@@ -361,12 +363,14 @@ void calibrate() {
             }
             break;
         }
+        default:
+            break;
     }
 }
 
 void readPot() {
     int raw = analogRead(POT_PIN);
-    smoothedPot = (smoothedPot * 0.9f) + (raw * 0.1f);
+    smoothedPot = (smoothedPot * 0.9f) + (static_cast<float>(raw) * 0.1f);
 }
 
 void adjustSpeed() {
@@ -424,7 +428,7 @@ void controlRPM() {
     currentSpeed += output;
     currentSpeed = constrain(currentSpeed, minStartDuty, 4095);
 
-    ledcWrite(motorChannel, (uint16_t)currentSpeed);
+    ledcWrite(motorChannel, currentSpeed);
     if (DebugLevel::VERBOSE <= currentDebugLevel) {
         Serial.printf("control RPM %hu\n", currentSpeed);
     }
@@ -458,42 +462,46 @@ void loop() {
     }
 
     static uint32_t modeButtonPressStartTime = 0;
+    static uint32_t totalPressStartTime = 0;
     static bool modeButtonWasPressed = false;
     bool modeActionExecuted = false;
 
     if (digitalRead(MODE_BUTTON_PIN) == LOW) {
         if (!modeButtonWasPressed) {
             modeButtonPressStartTime = millis();
+            totalPressStartTime = millis();
             modeButtonWasPressed = true;
             modeActionExecuted = false;
         } else {
-            if (!modeActionExecuted && millis() - modeButtonPressStartTime >= 3000) {
+            if (millis() - modeButtonPressStartTime >= 3000) {
                 int next = static_cast<int>(currentDebugLevel) + 1;
-
-                if (next > static_cast<int>(DebugLevel::VERBOSE)) {
-                    next = 0;
-                }
-
+                if (next > static_cast<int>(DebugLevel::VERBOSE)) next = 0;
                 currentDebugLevel = static_cast<DebugLevel>(next);
 
                 Serial.print("New Debug Level: ");
                 playClick(1000, 100);
+
                 switch (currentDebugLevel) {
                     case DebugLevel::NONE: Serial.println("NONE"); break;
                     case DebugLevel::INFO: Serial.println("INFO"); break;
                     case DebugLevel::DEBUG: Serial.println("DEBUG"); break;
                     case DebugLevel::VERBOSE: Serial.println("VERBOSE"); break;
                 }
+
+                modeButtonPressStartTime = millis();
                 modeActionExecuted = true;
             }
         }
     } else {
         if (modeButtonWasPressed) {
-            if (!modeActionExecuted && millis() - modeButtonPressStartTime < 3000) {
+            unsigned long totalDuration = millis() - totalPressStartTime;
+
+            if (!modeActionExecuted && totalDuration < 3000 && totalDuration > 50) {
                 controlMode = (controlMode == 0) ? 1 : 0;
-                Serial.printf("Control mode got set to %s\n", controlMode == 1 ? "rpm" : "voltage (duty cycle)");
+                Serial.printf("Control mode set to %s\n", controlMode == 1 ? "rpm" : "voltage");
                 playClick(2000, 100);
             }
+
             modeButtonWasPressed = false;
             modeActionExecuted = false;
         }
