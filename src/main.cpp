@@ -52,6 +52,8 @@ float Kp = 0.8f;
 float Ki = 0.1f;
 float integrator = 0;
 float maxRPM = 2000.0f;
+const float INTEGRATOR_CLAMP = 500.0f;
+
 
 volatile uint32_t debugTickCount = 0;
 
@@ -126,6 +128,7 @@ void setup() {
     FastLED.setBrightness(127);
 
     pinMode(EMERGENCY_STOP_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(MODE_BUTTON_PIN, INPUT_PULLUP);
     pinMode(CALIBRATE_BUTTON_PIN, INPUT_PULLUP);
 
     ledcSetup(speakerChannel, freqSpeaker, resolutionSpeaker);
@@ -214,12 +217,13 @@ void calibrate() {
     switch (calibrateStep) {
         case 1: {
             ledcWrite(motorChannel, 4095);
+            if (DebugLevel::VERBOSE <= currentDebugLevel) {
                 Serial.println("calibrate case 2 ledc 4095");
+            }
 
             uint32_t now = millis();
-            if (now - lastCheckTime >= 100) {
+            if (now - lastCheckTime >= 200) {
                 float deltaTime = (now - lastCheckTime) / 1000.0f;
-
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
                 if (abs(acceleration) < 5.0f && smoothedRPM > 500) {
@@ -248,6 +252,7 @@ void calibrate() {
             calibrating = false;
             calibrateStep = 0;
             break;
+        }
     }
 }
 
@@ -341,7 +346,7 @@ void loop() {
         calibrating = false;
         calibrateStep = 0;
         ledcWriteTone(speakerChannel, 0);
-        delay(500);
+        delay(300);
     }
 
     static uint32_t modeButtonPressStartTime = 0;
@@ -369,24 +374,26 @@ void loop() {
         }
     }
 
+    static uint32_t CalibrateButtonPressStartTime = 0;
+    static bool CalibrateButtonWasPressed = false;
 
     if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW && !calibrating) {
-        if (!buttonWasPressed) {
-            buttonPressStartTime = millis();
-            buttonWasPressed = true;
+        if (!CalibrateButtonWasPressed) {
+            CalibrateButtonPressStartTime = millis();
+            CalibrateButtonWasPressed = true;
         } else {
-            if (millis() - buttonPressStartTime >= 3000) {
+            if (millis() - CalibrateButtonPressStartTime >= 3000) {
                 testing = !testing;
 
                 playClick(2000, 100);
 
-                buttonWasPressed = false;
+                CalibrateButtonWasPressed = false;
                 Serial.printf("Test mode %s\n", testing ? "activated" : "deactivated");
             }
         }
     } else {
-        if (buttonWasPressed) {
-            if (millis() - buttonPressStartTime < 3000) {
+        if (CalibrateButtonWasPressed) {
+            if (millis() - CalibrateButtonPressStartTime < 3000) {
                 calibrating = true;
                 minStartDuty = 0;
 
@@ -394,7 +401,7 @@ void loop() {
 
                 Serial.println("Calibration started.");
             }
-            buttonWasPressed = false;
+            CalibrateButtonWasPressed = false;
         }
     }
 
