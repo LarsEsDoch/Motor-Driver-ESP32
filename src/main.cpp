@@ -40,7 +40,17 @@ volatile uint32_t latestDuration = 0;
 volatile bool newPulseReceived = false;
 
 volatile float currentRPM = 0;
-volatile float smoothedRPM = 0;
+float smoothedRPM = 0;
+
+uint32_t tuneTimer = 0;
+float rpmAt50 = 0;
+float systemGain = 0;
+float timeConstant = 0;
+
+float targetRPM = 0;
+float Kp = 0.8f;
+float Ki = 0.1f;
+float integrator = 0;
 float maxRPM = 2000.0f;
 
 volatile uint32_t debugTickCount = 0;
@@ -265,6 +275,45 @@ void adjustSpeed() {
         }
 
         ledcWrite(motorChannel, motorSpeed);
+        if (DebugLevel::VERBOSE <= currentDebugLevel) {
+            Serial.printf("adjust speed %hu\n", motorSpeed);
+        }
+    }
+}
+
+void controlRPM() {
+    float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
+    float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
+    targetRPM = percent * maxRPM;
+
+    if (targetRPM < 100) {
+        integrator = 0;
+        currentSpeed = 0;
+        ledcWrite(motorChannel, 0);
+        return;
+    }
+
+    if (smoothedRPM < 50 && targetRPM > 100) {
+        currentSpeed = minStartDuty;
+        ledcWrite(motorChannel, (uint16_t)currentSpeed);
+        if (DebugLevel::VERBOSE <= currentDebugLevel) {
+            Serial.printf("control RPM if %hu\n", currentSpeed);
+        }
+        return;
+    }
+
+    float error = targetRPM - smoothedRPM;
+
+    integrator += error;
+    integrator = constrain(integrator, -INTEGRATOR_CLAMP, INTEGRATOR_CLAMP);
+
+    float output = (Kp * error) + (Ki * integrator);
+    currentSpeed += output;
+    currentSpeed = constrain(currentSpeed, minStartDuty, 4095);
+
+    ledcWrite(motorChannel, (uint16_t)currentSpeed);
+    if (DebugLevel::VERBOSE <= currentDebugLevel) {
+        Serial.printf("control RPM %hu\n", currentSpeed);
     }
 }
 
