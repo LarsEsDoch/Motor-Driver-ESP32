@@ -54,6 +54,9 @@ float integrator = 0;
 float maxRPM = 2000.0f;
 const float INTEGRATOR_CLAMP = 500.0f;
 
+static float lastRPM = 0;
+static uint32_t lastCheckTime = 0;
+float acceleration = 0;
 
 volatile uint32_t debugTickCount = 0;
 
@@ -202,20 +205,40 @@ void test() {
 void calibrate() {
     if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
         switch (calibrateStep) {
-            case 0:
+            case 1:
                 minStartDuty = motorSpeed;
-                calibrateStep = 1;
+                calibrateStep = 2;
 
-                Serial.printf("Speed calibration finished. Set min duty cycle to %hhu\n", minStartDuty);
+                Serial.printf("Speed calibration finished. Set min duty cycle to %hu\n", minStartDuty);
                 Serial.println("Continuing with motor max speed");
                 playClick(1500, 100);
+                break;
+            case 5:
+                Serial.println("Calibration finished.");
+
+                preferences.begin("motor-settings", false);
+                preferences.putUShort("minDuty", minStartDuty);
+                preferences.putFloat("maxRPM", maxRPM);
+                preferences.putFloat("Kp", Kp);
+                preferences.putFloat("Ki", Ki);
+                preferences.end();
+
+                Serial.println("Saved settings to flash storage.");
+                playClick(1000, 100);
+                calibrating = false;
+                calibrateStep = 0;
                 break;
         }
         delay(300);
     }
 
     switch (calibrateStep) {
-        case 1: {
+        case 0: {
+            calibrateStep = 1;
+            controlMode = 0;
+            break;
+        }
+        case 2: {
             ledcWrite(motorChannel, 4095);
             if (DebugLevel::VERBOSE <= currentDebugLevel) {
                 Serial.println("calibrate case 2 ledc 4095");
@@ -226,11 +249,25 @@ void calibrate() {
                 float deltaTime = (now - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
-                if (abs(acceleration) < 5.0f && smoothedRPM > 500) {
-                    maxRPM = smoothedRPM;
-                    Serial.printf("Set maximum RPM to: %f", maxRPM);
-                    playClick(1800, 200);
-                    calibrateStep = 2;
+                static uint8_t stableCount = 0;
+
+                if (abs(acceleration) < 50.0f && smoothedRPM > 500) {
+                    stableCount++;
+                    Serial.printf("Stable check %u/8 | RPM: %.2f | Accel: %.2f\n", stableCount, smoothedRPM, acceleration);
+
+                    if (stableCount >= 8) {
+                        maxRPM = smoothedRPM;
+                        stableCount = 0;
+                        Serial.printf("Max RPM confirmed: %.2f\n", maxRPM);
+                        playClick(1800, 200);
+                        tuneTimer = millis();
+                        calibrateStep = 3;
+                    }
+                } else {
+                    if (stableCount > 0) {
+                        Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount, acceleration);
+                    }
+                    stableCount = 0;
                 }
 
                 lastRPM = smoothedRPM;
@@ -238,19 +275,86 @@ void calibrate() {
             }
             break;
         }
-        case 2:
-        case 3:
-            Serial.println("Calibration finished.");
+        case 3: {
+            ledcWrite(motorChannel, 2048);
+            if (DebugLevel::VERBOSE <= currentDebugLevel) {
+                Serial.println("calibrate case e ledc 2048");
+            }
 
-            preferences.begin("motor-settings", false);
-            preferences.putUShort("minDuty", minStartDuty);
-            preferences.putFloat("maxRPM", maxRPM);
-            preferences.end();
+            uint32_t now3 = millis();
+            if (now3 - lastCheckTime >= 200) {
+                float deltaTime = (now3 - lastCheckTime) / 1000.0f;
+                acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
-            Serial.println("Saved settings to flash storage.");
-            playClick(1000, 100);
-            calibrating = false;
-            calibrateStep = 0;
+                static uint8_t stableCount50 = 0;
+
+                if (abs(acceleration) < 10.0f && (now3 - tuneTimer > 5000)) {
+                    stableCount50++;
+                    if (stableCount50 >= 10) {
+                        rpmAt50 = smoothedRPM;
+                        Serial.printf("Base RPM at 50%% PWM stabilized: %.2f\n", rpmAt50);
+                        Serial.println("Jumping to 80%% PWM...");
+
+                        stableCount50 = 0;
+                        ledcWrite(motorChannel, 3276);
+                        if (DebugLevel::VERBOSE <= currentDebugLevel) {
+                            Serial.println("calibrate case 3 ledc 3276");
+                        }
+                        tuneTimer = millis();
+                        lastCheckTime = millis();
+                        calibrateStep = 4;
+                    }
+                } else {
+                    stableCount50 = 0;
+                }
+
+                lastRPM = smoothedRPM;
+                lastCheckTime = now3;
+            }
+            break;
+        }
+        case 4: {
+            ledcWrite(motorChannel, 3276);
+            if (DebugLevel::VERBOSE <= currentDebugLevel) {
+                Serial.println("calibrate case 4 ledc 3276");
+            }
+
+            uint32_t now4 = millis();
+            if (now4 - lastCheckTime >= 200) {
+                float deltaTime = (now4 - lastCheckTime) / 1000.0f;
+                acceleration = (smoothedRPM - lastRPM) / deltaTime;
+
+                if (abs(acceleration) < 5.0f && (now4 - tuneTimer > 1000)) {
+                    float rpmAt80 = smoothedRPM;
+                    float deltaRPM = rpmAt80 - rpmAt50;
+                    float deltaPWM = 3276.0f - 2048.0f;
+
+                    systemGain = deltaRPM / deltaPWM;
+
+                    float timeToStabilize = (now4 - tuneTimer) / 1000.0f;
+                    timeConstant = timeToStabilize / 3.0f;
+
+                    Serial.printf("RPM at 80%%: %.2f\n", rpmAt80);
+                    Serial.printf("System Gain (K): %.4f\n", systemGain);
+                    Serial.printf("Time Constant (Tau): %.2f sec\n", timeConstant);
+
+                    Kp = 0.5f / systemGain;
+
+                    Ki = (Kp / timeConstant) * 0.5f;
+
+                    Serial.printf("\n--- TUNING SUCCESSFUL ---\n");
+                    Serial.printf("Calculated Kp: %.4f | Ki: %.4f\n", Kp, Ki);
+                    Serial.println("Press Calibrate Button to save settings.");
+
+                    playClick(2000, 300);
+
+                    ledcWrite(motorChannel, 0);
+                    calibrateStep = 5;
+                }
+
+                lastRPM = smoothedRPM;
+                lastCheckTime = now4;
+            }
             break;
         }
     }
