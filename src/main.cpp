@@ -464,6 +464,23 @@ void loop() {
             modeActionExecuted = false;
         } else {
             if (!modeActionExecuted && millis() - modeButtonPressStartTime >= 3000) {
+                int next = static_cast<int>(currentDebugLevel) + 1;
+
+                if (next > static_cast<int>(DebugLevel::VERBOSE)) {
+                    next = 0;
+                }
+
+                currentDebugLevel = static_cast<DebugLevel>(next);
+
+                Serial.print("New Debug Level: ");
+                playClick(1000, 100);
+                switch (currentDebugLevel) {
+                    case DebugLevel::NONE: Serial.println("NONE"); break;
+                    case DebugLevel::INFO: Serial.println("INFO"); break;
+                    case DebugLevel::DEBUG: Serial.println("DEBUG"); break;
+                    case DebugLevel::VERBOSE: Serial.println("VERBOSE"); break;
+                }
+                modeActionExecuted = true;
             }
         }
     } else {
