@@ -120,10 +120,14 @@ void setup() {
     preferences.begin("motor-settings", false);
 
     minStartDuty = preferences.getUShort("minDuty", 0);
-    if (minStartDuty != 0) Serial.printf("\nReused min start duty of %hu out of preferences.\n", minStartDuty);
-    maxRPM = preferences.getFloat("maxRPM", 2000);
-    if (maxRPM != 2000) Serial.printf("\nReused Max RPM of %f out of preferences.\n", maxRPM);
-    preferences.end();
+    maxRPM = preferences.getFloat("maxRPM", 2000.0f);
+    Kp = preferences.getFloat("Kp", 0.8f);
+    Ki = preferences.getFloat("Ki", 0.1f);
+
+    if (minStartDuty != 0) {
+        Serial.println("\nLoaded settings from flash:");
+        Serial.printf("Min Duty: %hu | Max RPM: %.2f | Kp: %.4f | Ki: %.4f\n\n", minStartDuty, maxRPM, Kp, Ki);
+    }
 
     pinMode(STATUS_LED_PIN, OUTPUT);
 
