@@ -61,8 +61,10 @@ bool testing = false;
 uint8_t ledBrightness = 0;
 
 
-bool debug = true;
 int controlMode = 0;
+
+enum class DebugLevel {NONE = 0, INFO = 1, DEBUG = 2, VERBOSE = 3};
+DebugLevel currentDebugLevel = DebugLevel::INFO;
 
 volatile bool firstIntervalSeeded = false;
 
@@ -202,6 +204,7 @@ void calibrate() {
     switch (calibrateStep) {
         case 1: {
             ledcWrite(motorChannel, 4095);
+                Serial.println("calibrate case 2 ledc 4095");
 
             uint32_t now = millis();
             if (now - lastCheckTime >= 100) {
@@ -278,8 +281,8 @@ void loop() {
 
     static uint32_t lastSeenTick = 0;
 
-    if (debugTickCount != lastSeenTick && debug) {
-        Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Target RPM: %.2f | Motor speed: %hu | Current speed: %.2hu\n", debugTickCount, currentRPM, smoothedRPM, targetRPM, motorSpeed, currentSpeed);
+    if (debugTickCount != lastSeenTick && currentDebugLevel <= DebugLevel::INFO) {
+        Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Target RPM: %.2f | Motor speed: %hu | Current speed: %.2hu | ADC Pot: %.2f \n", debugTickCount, currentRPM, smoothedRPM, targetRPM, motorSpeed, currentSpeed, smoothedPot);
         lastSeenTick = debugTickCount;
     }
 
