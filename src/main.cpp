@@ -92,6 +92,14 @@ void IRAM_ATTR pulseISR() {
     }
 
     uint32_t duration = now - lastPulseMicros;
+
+    if (duration > 1000000) {
+        lastPulseMicros = now;
+        latestDuration = 0;
+        firstIntervalSeeded = false;
+        return;
+    }
+
     uint32_t minDuration = (latestDuration > 0) ? (latestDuration / 2) : 5000;
     if (minDuration < 5000) minDuration = 5000;
 
@@ -257,9 +265,9 @@ void calibrate() {
 
                 static uint8_t stableCount = 0;
 
-                if (abs(acceleration) < 50.0f && smoothedRPM > 500) {
+                if (abs(acceleration) < 100.0f && smoothedRPM > 500) {
                     stableCount++;
-                    Serial.printf("Stable check %u/8 | RPM: %.2f | Accel: %.2f\n", stableCount, smoothedRPM, acceleration);
+                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/8 | RPM: %.2f | Accel: %.2f\n", stableCount, smoothedRPM, acceleration);
 
                     if (stableCount >= 8) {
                         maxRPM = smoothedRPM;
@@ -271,7 +279,7 @@ void calibrate() {
                     }
                 } else {
                     if (stableCount > 0) {
-                        Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount, acceleration);
+                        if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount, acceleration);
                     }
                     stableCount = 0;
                 }
@@ -294,8 +302,10 @@ void calibrate() {
 
                 static uint8_t stableCount50 = 0;
 
-                if (abs(acceleration) < 10.0f && (now3 - tuneTimer > 5000)) {
+                if (abs(acceleration) < 50.0f && (now3 - tuneTimer > 5000)) {
                     stableCount50++;
+                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/8 | RPM: %.2f | Accel: %.2f\n", stableCount50, smoothedRPM, acceleration);
+
                     if (stableCount50 >= 10) {
                         rpmAt50 = smoothedRPM;
                         Serial.printf("Base RPM at 50%% PWM stabilized: %.2f\n", rpmAt50);
@@ -311,6 +321,9 @@ void calibrate() {
                         calibrateStep = 4;
                     }
                 } else {
+                    if (stableCount50 > 0) {
+                        if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount50, acceleration);
+                    }
                     stableCount50 = 0;
                 }
 
@@ -399,9 +412,15 @@ void adjustSpeed() {
 }
 
 void controlRPM() {
-    float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
-    float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
-    targetRPM = percent * maxRPM;
+    if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
+        lastTriggeredPot = smoothedPot;
+
+        float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
+        float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
+        targetRPM = percent * maxRPM;
+
+        playClick(150, 10);
+    }
 
     if (targetRPM < 100) {
         integrator = 0;
@@ -412,25 +431,29 @@ void controlRPM() {
 
     if (smoothedRPM < 50 && targetRPM > 100) {
         currentSpeed = minStartDuty;
-        ledcWrite(motorChannel, (uint16_t)currentSpeed);
+        ledcWrite(motorChannel, currentSpeed);
         if (DebugLevel::VERBOSE <= currentDebugLevel) {
-            Serial.printf("control RPM if %hu\n", currentSpeed);
+            Serial.printf("Start-Kick: %hu\n", currentSpeed);
         }
         return;
     }
 
     float error = targetRPM - smoothedRPM;
-
     integrator += error;
     integrator = constrain(integrator, -INTEGRATOR_CLAMP, INTEGRATOR_CLAMP);
 
     float output = (Kp * error) + (Ki * integrator);
     currentSpeed += output;
-    currentSpeed = constrain(currentSpeed, minStartDuty, 4095);
 
-    ledcWrite(motorChannel, currentSpeed);
+    if (currentSpeed < minStartDuty) {
+        currentSpeed = minStartDuty;
+    }
+
+    currentSpeed = constrain(currentSpeed, 0, 4095);
+    ledcWrite(motorChannel, (uint16_t)currentSpeed);
+
     if (DebugLevel::VERBOSE <= currentDebugLevel) {
-        Serial.printf("control RPM %hu\n", currentSpeed);
+        Serial.printf("PID Control: Target %.2f | Ist %.2f | PWM %hu\n", targetRPM, smoothedRPM, (uint16_t)currentSpeed);
     }
 }
 
