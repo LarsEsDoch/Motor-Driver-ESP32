@@ -376,32 +376,44 @@ void calibrate() {
                 float deltaTime = (now4 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
-                if (abs(acceleration) < 5.0f && (now4 - tuneTimer > 1000)) {
-                    float rpmAt80 = smoothedRPM;
-                    float deltaRPM = rpmAt80 - rpmAt50;
-                    float deltaPWM = 3276.0f - 2048.0f;
+                static uint8_t stableCount80 = 0;
 
-                    systemGain = deltaRPM / deltaPWM;
+                if (abs(acceleration) < 80.0f && (now4 - tuneTimer > 5000)) {
+                    stableCount80++;
+                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount80, smoothedRPM, acceleration);
 
-                    float timeToStabilize = (now4 - tuneTimer) / 1000.0f;
-                    timeConstant = timeToStabilize / 3.0f;
+                    if (stableCount80 >= 10) {
+                        float rpmAt80 = smoothedRPM;
+                        float deltaRPM = rpmAt80 - rpmAt50;
+                        float deltaPWM = 3276.0f - 2048.0f;
 
-                    Serial.printf("RPM at 80%%: %.2f\n", rpmAt80);
-                    Serial.printf("System Gain (K): %.4f\n", systemGain);
-                    Serial.printf("Time Constant (Tau): %.2f sec\n", timeConstant);
+                        systemGain = deltaRPM / deltaPWM;
 
-                    Kp = 0.5f / systemGain;
+                        float timeToStabilize = (now4 - tuneTimer) / 1000.0f;
+                        timeConstant = timeToStabilize / 3.0f;
 
-                    Ki = (Kp / timeConstant) * 0.5f;
+                        Serial.printf("RPM at 80%%: %.2f\n", rpmAt80);
+                        Serial.printf("System Gain (K): %.4f\n", systemGain);
+                        Serial.printf("Time Constant (Tau): %.2f sec\n", timeConstant);
 
-                    Serial.printf("\n--- TUNING SUCCESSFUL ---\n");
-                    Serial.printf("Calculated Kp: %.4f | Ki: %.4f\n", Kp, Ki);
-                    Serial.println("Press Calibrate Button to save settings.");
+                        Kp = 0.5f / systemGain;
 
+                        Ki = (Kp / timeConstant) * 0.5f;
 
-                    ledcWrite(motorChannel, 0);
-                    calibrateStep = 5;
+                        Serial.printf("\n--- TUNING SUCCESSFUL ---\n");
+                        Serial.printf("Calculated Kp: %.4f | Ki: %.4f\n", Kp, Ki);
+                        Serial.println("Press Calibrate Button to save settings.");
+
                         playClick(1750, 400);
+
+                        ledcWrite(motorChannel, 0);
+                        calibrateStep = 5;
+                    }
+                } else {
+                    if (stableCount80 > 0) {
+                        if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount80, acceleration);
+                    }
+                    stableCount80 = 0;
                 }
 
                 lastRPM = smoothedRPM;
