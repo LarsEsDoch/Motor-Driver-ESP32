@@ -228,7 +228,7 @@ void calibrate() {
                 preferences.end();
 
                 Serial.println("Saved settings to flash storage.");
-                playClick(1000, 100);
+                playClick(2000, 500);
                 calibrating = false;
                 calibrateStep = 0;
                 break;
@@ -299,13 +299,13 @@ void calibrate() {
 
                 if (abs(acceleration) < 100.0f && smoothedRPM > 500) {
                     stableCount++;
-                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/8 | RPM: %.2f | Accel: %.2f\n", stableCount, smoothedRPM, acceleration);
+                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount, smoothedRPM, acceleration);
 
-                    if (stableCount >= 8) {
+                    if (stableCount >= 10) {
                         maxRPM = smoothedRPM;
                         stableCount = 0;
                         Serial.printf("Max RPM confirmed: %.2f\n", maxRPM);
-                        playClick(1800, 200);
+                        playClick(1250, 200);
                         tuneTimer = millis();
                         calibrateStep = 3;
                     }
@@ -336,10 +336,11 @@ void calibrate() {
 
                 if (abs(acceleration) < 50.0f && (now3 - tuneTimer > 5000)) {
                     stableCount50++;
-                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/8 | RPM: %.2f | Accel: %.2f\n", stableCount50, smoothedRPM, acceleration);
+                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount50, smoothedRPM, acceleration);
 
                     if (stableCount50 >= 10) {
                         rpmAt50 = smoothedRPM;
+                        playClick(1500, 300);
                         Serial.printf("Base RPM at 50%% PWM stabilized: %.2f\n", rpmAt50);
                         Serial.println("Jumping to 80%% PWM...");
 
@@ -397,10 +398,10 @@ void calibrate() {
                     Serial.printf("Calculated Kp: %.4f | Ki: %.4f\n", Kp, Ki);
                     Serial.println("Press Calibrate Button to save settings.");
 
-                    playClick(2000, 300);
 
                     ledcWrite(motorChannel, 0);
                     calibrateStep = 5;
+                        playClick(1750, 400);
                 }
 
                 lastRPM = smoothedRPM;
