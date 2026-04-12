@@ -217,14 +217,6 @@ void test() {
 void calibrate() {
     if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
         switch (calibrateStep) {
-            case 1:
-                minStartDuty = motorSpeed;
-                calibrateStep = 2;
-
-                Serial.printf("Speed calibration finished. Set min duty cycle to %hu\n", minStartDuty);
-                Serial.println("Continuing with motor max speed");
-                playClick(1500, 100);
-                break;
             case 5:
                 Serial.println("Calibration finished.");
 
@@ -250,6 +242,46 @@ void calibrate() {
         case 0: {
             calibrateStep = 1;
             controlMode = 0;
+            break;
+        }
+        case 1: {
+            static uint32_t lastStepTime = 0;
+            static uint16_t testDuty = 500;
+
+            uint32_t now = millis();
+
+            if (now - lastStepTime >= 300) {
+                lastStepTime = now;
+
+                if (smoothedRPM < 50.0f) {
+                    testDuty += 15;
+                    ledcWrite(motorChannel, testDuty);
+
+                    if (DebugLevel::DEBUG <= currentDebugLevel) {
+                        Serial.printf("Testing minDuty: %u | Current RPM: %.2f\n", testDuty, smoothedRPM);
+                    }
+                }
+
+                else {
+                    static uint8_t startCount = 0;
+                    startCount++;
+
+                    if (startCount >= 5) {
+                        minStartDuty = testDuty;
+                        Serial.printf("Auto-minDuty found: %u\n", minStartDuty);
+                        playClick(1000, 100);
+
+                        startCount = 0;
+                        calibrateStep = 2;
+                    }
+                }
+            }
+
+            if (testDuty > 2000) {
+                Serial.println("Calibration Error: Motor not starting!");
+                calibrating = false;
+                ledcWrite(motorChannel, 0);
+            }
             break;
         }
         case 2: {
