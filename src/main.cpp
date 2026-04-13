@@ -215,29 +215,6 @@ void test() {
 }
 
 void calibrate() {
-    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
-        switch (calibrateStep) {
-            case 5:
-                Serial.println("Calibration finished.");
-
-                preferences.begin("motor-settings", false);
-                preferences.putUShort("minDuty", minStartDuty);
-                preferences.putFloat("maxRPM", maxRPM);
-                preferences.putFloat("Kp", Kp);
-                preferences.putFloat("Ki", Ki);
-                preferences.end();
-
-                Serial.println("Saved settings to flash storage.");
-                playClick(2000, 500);
-                calibrating = false;
-                calibrateStep = 0;
-                break;
-            default:
-                break;
-        }
-        delay(300);
-    }
-
     switch (calibrateStep) {
         case 0: {
             calibrateStep = 1;
@@ -334,7 +311,7 @@ void calibrate() {
 
                 static uint8_t stableCount50 = 0;
 
-                if (abs(acceleration) < 50.0f && (now3 - tuneTimer > 5000)) {
+                if (abs(acceleration) < 80.0f && (now3 - tuneTimer > 5000)) {
                     stableCount50++;
                     if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount50, smoothedRPM, acceleration);
 
@@ -423,6 +400,29 @@ void calibrate() {
         }
         default:
             break;
+    }
+
+    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
+        switch (calibrateStep) {
+            case 5:
+                Serial.println("Calibration finished.");
+
+                preferences.begin("motor-settings", false);
+                preferences.putUShort("minDuty", minStartDuty);
+                preferences.putFloat("maxRPM", maxRPM);
+                preferences.putFloat("Kp", Kp);
+                preferences.putFloat("Ki", Ki);
+                preferences.end();
+
+                Serial.println("Saved settings to flash storage.");
+                playClick(2000, 500);
+                calibrating = false;
+                calibrateStep = 0;
+                break;
+            default:
+                break;
+        }
+        delay(300);
     }
 }
 
