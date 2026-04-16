@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include <FastLED.h>
 #include <Preferences.h>
+#include <WiFi.h>
 
 Preferences preferences;
+
+#include "secrets.h"
 
 #define STATUS_LED_PIN 48
 
@@ -153,6 +156,10 @@ void setup() {
     ledcAttachPin(MOTOR_PIN, motorChannel);
 
     Serial.println("System ready!\n");
+
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+    Serial.println(WiFi.localIP());
 }
 
 void playClick(int freq, int duration) {
