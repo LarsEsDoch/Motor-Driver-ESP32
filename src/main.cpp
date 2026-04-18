@@ -546,12 +546,29 @@ void loop() {
 
     static uint32_t lastUpload = 0;
     if (millis() - lastUpload > 100) {
+        static float lastRPM = 0;
+        const float tolerance = 50.0f;
+
+        int movementState = 1;
+
+        if (smoothedRPM > (lastRPM + tolerance)) {
+            movementState = 0;
+        }
+        else if (smoothedRPM < (lastRPM - tolerance)) {
+            movementState = 2;
+        }
+
         String json = "{";
         json += "\"rpm\":" + String(currentRPM, 2) + ",";
+        json += "\"trend\":" + String(movementState) + ",";
+        json += "\"pot\":" + String(motorSpeed);
         json += "}";
+
         ws.textAll(json);
         lastUpload = millis();
+        lastRPM = smoothedRPM;
     }
+
     if (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW) {
         emergencyStop = !emergencyStop;
         testing = false;
