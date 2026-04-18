@@ -2,6 +2,7 @@
 #include <FastLED.h>
 #include <Preferences.h>
 #include <WiFi.h>
+#include <ESPAsyncWebServer.h>
 
 Preferences preferences;
 
@@ -86,6 +87,11 @@ DebugLevel currentDebugLevel = DebugLevel::INFO;
 
 volatile bool firstIntervalSeeded = false;
 
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+#include "html.h"
+
 void IRAM_ATTR pulseISR() {
     uint32_t now = micros();
 
@@ -160,6 +166,17 @@ void setup() {
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
     Serial.println(WiFi.localIP());
+
+    ws.onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {});
+    server.addHandler(&ws);
+
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send_P(200, "text/html", index_html);
+    });
+
+    server.begin();
+
+    Serial.println("HTTP server started");
 }
 
 void playClick(int freq, int duration) {
@@ -527,6 +544,14 @@ void loop() {
         lastSeenTick = debugTickCount;
     }
 
+    static uint32_t lastUpload = 0;
+    if (millis() - lastUpload > 100) {
+        String json = "{";
+        json += "\"rpm\":" + String(currentRPM, 2) + ",";
+        json += "}";
+        ws.textAll(json);
+        lastUpload = millis();
+    }
     if (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW) {
         emergencyStop = !emergencyStop;
         testing = false;
