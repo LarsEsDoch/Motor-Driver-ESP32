@@ -7,6 +7,7 @@
         body { font-family: sans-serif; text-align: center; background: #121212; color: white; }
         .card { background: #1e1e1e; padding: 20px; border-radius: 10px; display: inline-block; margin-top: 50px; }
         #rpm { font-size: 3rem; color: white; }
+        #control-target { font-size: 3rem; color: white; }
         #status { color: green; }
     </style>
 </head>
@@ -15,6 +16,11 @@
         <h1>Motor RPM</h1>
         <div id="rpm">0.00</div>
         <p>Status: <span id="status">Connected</span></p>
+    </div>
+    <div class="card">
+        <h1>Control Mode</h1>
+        <div id="control-target">0</div>
+        <p>Mode <span id="control-mode">N/A</span></p>
     </div>
     <script>
         var gateway = `ws://${window.location.hostname}/ws`;
@@ -30,6 +36,15 @@
                 if(data.trend === 0) color = "#00ff00";
                 if(data.trend === 2) color = "#ff4444";
                 document.getElementById('rpm').style.color = color;
+
+                let controlMode = "Voltage"
+                let controlTarget = data.target_speed;
+                if (data.control_mode === 1) {
+                    controlMode = "RPM";
+                    controlTarget = data.target_rpm
+                }
+                document.getElementById('control-mode').innerHTML = controlMode;
+                document.getElementById('control-target').innerHTML = controlTarget;
             };
 
             websocket.onclose = (event) => {

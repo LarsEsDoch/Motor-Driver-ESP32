@@ -46,6 +46,7 @@ volatile bool newPulseReceived = false;
 
 volatile float currentRPM = 0;
 float smoothedRPM = 0;
+float displayRPM = 0;
 
 uint32_t tuneTimer = 0;
 float rpmAt50 = 0;
@@ -558,21 +559,32 @@ void loop() {
     static uint32_t lastUpload = 0;
     if (millis() - lastUpload > 100) {
         static float lastRPM = 0;
-        const float tolerance = 50.0f;
+        const float tolerance = 200.0f;
+        if (micros() - lastPulseMicros > 2000000) {
+            displayRPM = (displayRPM * 0.5f) + (currentRPM * 0.5f);
+        } else {
+            displayRPM = (displayRPM * 0.95f) + (currentRPM * 0.05f);
+        }
 
         int movementState = 1;
 
-        if (smoothedRPM > (lastRPM + tolerance)) {
-            movementState = 0;
-        }
-        else if (smoothedRPM < (lastRPM - tolerance)) {
+        if (displayRPM > (lastRPM + tolerance)) {
             movementState = 2;
+        }
+        else if (displayRPM < (lastRPM - tolerance)) {
+            movementState = 0;
         }
 
         String json = "{";
-        json += "\"rpm\":" + String(currentRPM, 2) + ",";
+        json += "\"rpm\":" + String(displayRPM, 2) + ",";
         json += "\"trend\":" + String(movementState) + ",";
-        json += "\"pot\":" + String(motorSpeed);
+        json += "\"pot\":" + String(smoothedPot) + ",";
+        json += "\"rotation\":" + String(debugTickCount) + ",";
+        json += "\"target_rpm\":" + String(targetRPM) + ",";
+        json += "\"target_speed\":" + String(motorSpeed) + ",";
+        json += "\"control_mode\":" + String(controlMode) + ",";
+        json += "\"emergency\":" + String(emergencyStop) + ",";
+        json += "\"calibrateStep\":" + String(calibrateStep);
         json += "}";
 
         ws.textAll(json);
