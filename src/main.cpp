@@ -80,6 +80,8 @@ bool testing = false;
 
 uint8_t ledBrightness = 0;
 
+volatile bool triggerFlash = false;
+uint32_t flashDurationUS = 100;
 
 int controlMode = 0;
 
@@ -123,6 +125,8 @@ void IRAM_ATTR pulseISR() {
         latestDuration = duration;
         newPulseReceived = true;
         debugTickCount++;
+
+        triggerFlash = true;
     }
 }
 
@@ -244,11 +248,6 @@ void test() {
 
 void calibrate() {
     switch (calibrateStep) {
-        case 0: {
-            calibrateStep = 1;
-            controlMode = 0;
-            break;
-        }
         case 1: {
             static uint32_t lastStepTime = 0;
             static uint16_t testDuty = 500;
@@ -285,6 +284,7 @@ void calibrate() {
             if (testDuty > 2000) {
                 Serial.println("Calibration Error: Motor not starting!");
                 calibrating = false;
+                calibrateStep = 0;
                 ledcWrite(motorChannel, 0);
             }
             break;
@@ -302,7 +302,7 @@ void calibrate() {
 
                 static uint8_t stableCount = 0;
 
-                if (abs(acceleration) < 100.0f && smoothedRPM > 500) {
+                if (abs(acceleration) < 50.0f && smoothedRPM > 500) {
                     stableCount++;
                     if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount, smoothedRPM, acceleration);
 
@@ -339,7 +339,7 @@ void calibrate() {
 
                 static uint8_t stableCount50 = 0;
 
-                if (abs(acceleration) < 80.0f && (now3 - tuneTimer > 5000)) {
+                if (abs(acceleration) < 30.0f && (now3 - tuneTimer > 5000)) {
                     stableCount50++;
                     if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount50, smoothedRPM, acceleration);
 
@@ -383,7 +383,7 @@ void calibrate() {
 
                 static uint8_t stableCount80 = 0;
 
-                if (abs(acceleration) < 80.0f && (now4 - tuneTimer > 5000)) {
+                if (abs(acceleration) < 40.0f && (now4 - tuneTimer > 5000)) {
                     stableCount80++;
                     if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount80, smoothedRPM, acceleration);
 
@@ -531,6 +531,13 @@ void controlRPM() {
 }
 
 void loop() {
+    if (triggerFlash) {
+
+        //delayMicroseconds(flashDurationUS);
+
+        triggerFlash = true;
+    }
+
     if (newPulseReceived) {
         currentRPM = 60000000.0f / latestDuration;
         newPulseReceived = false;
@@ -649,6 +656,7 @@ void loop() {
         if (CalibrateButtonWasPressed) {
             if (millis() - CalibrateButtonPressStartTime < 3000) {
                 calibrating = true;
+                calibrateStep = 1;
                 minStartDuty = 0;
 
                 playClick(2000, 100);
@@ -685,7 +693,7 @@ void loop() {
     }
 
     readPot();
-    if (!calibrating || calibrateStep == 1) {
+    if (!calibrating) {
         if (controlMode == 0) {
             adjustSpeed();
         } else if (controlMode == 1) {
