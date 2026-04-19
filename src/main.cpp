@@ -3,6 +3,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include "LittleFS.h"
 
 Preferences preferences;
 
@@ -90,8 +91,6 @@ volatile bool firstIntervalSeeded = false;
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
-#include "html.h"
-
 void IRAM_ATTR pulseISR() {
     uint32_t now = micros();
 
@@ -164,14 +163,19 @@ void setup() {
     Serial.println("System ready!\n");
 
     WiFi.begin(WIFI_SSID, WIFI_PASS);
-    while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+    while (WiFiClass::status() != WL_CONNECTED) { delay(500); Serial.print("."); }
     Serial.println(WiFi.localIP());
 
     ws.onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {});
     server.addHandler(&ws);
 
+    if(!LittleFS.begin()){
+        Serial.println("An Error has occurred while mounting LittleFS");
+        return;
+    }
+
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send_P(200, "text/html", index_html);
+        request->send(LittleFS, "/index.html", "text/html");
     });
 
     server.begin();
