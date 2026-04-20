@@ -584,7 +584,7 @@ void loop() {
         json += "\"target_speed\":" + String(motorSpeed) + ",";
         json += "\"control_mode\":" + String(controlMode) + ",";
         json += "\"emergency\":" + String(emergencyStop) + ",";
-        json += "\"calibrateStep\":" + String(calibrateStep);
+        json += "\"calibrate_step\":" + String(calibrateStep);
         json += "}";
 
         ws.textAll(json);

@@ -4,14 +4,34 @@
     <meta charset="UTF-8">
     <title>ESP32 Motor Dashboard</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #121212; color: white; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 10px; display: inline-block; margin-top: 50px; }
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            background: #121212;
+            color: white;
+        }
+        .card {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 50px;
+            width: 250px;
+            height: 250px;
+            vertical-align: top;
+            align-content: center}
         #rpm { font-size: 3rem; color: white; }
         #control-target { font-size: 3rem; color: white; }
         #status { color: green; }
+        #calibrating-step { font-size: 3rem; color: white; }
     </style>
 </head>
 <body>
+    <div class="card">
+        <h1>Calibrating Status</h1>
+        <div id="calibrating-step">0/5</div>
+        <p><span id="calibrating-test">No calibration in progress</span></p>
+    </div>
     <div class="card">
         <h1>Motor RPM</h1>
         <div id="rpm">0.00</div>
@@ -45,6 +65,24 @@
                 }
                 document.getElementById('control-mode').innerHTML = controlMode;
                 document.getElementById('control-target').innerHTML = controlTarget;
+
+                let testGoal = "No calibration in progress"
+                switch (data.calibrate_step) {
+                    case 0:
+                        testGoal = "No calibration in progress";
+                    case 1:
+                        testGoal = "Minimum motor duty";
+                    case 2:
+                        testGoal = "Maximum motor speed";
+                    case 3:
+                        testGoal = "50% motor speed";
+                    case 4:
+                        testGoal = "80% motor speed";
+                    case 5:
+                        testGoal = "Waiting for confirmation to finish";
+                }
+                document.getElementById('calibrating-step').innerHTML = data.calibrate_step + "/5";
+                document.getElementById('calibrating-test').innerHTML = testGoal;
             };
 
             websocket.onclose = (event) => {
