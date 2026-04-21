@@ -9,39 +9,67 @@
             text-align: center;
             background: #121212;
             color: white;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .dashboard-container {
+            display: grid;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            grid-template-columns: repeat(2, 1fr);
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            justify-items: center;
+            width: max-content;
         }
         .card {
             background: #1e1e1e;
             padding: 20px;
             border-radius: 10px;
-            display: inline-block;
-            margin-top: 50px;
             width: 250px;
             height: 250px;
-            vertical-align: top;
-            align-content: center}
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
         #rpm { font-size: 3rem; color: white; }
         #control-target { font-size: 3rem; color: white; }
         #status { color: green; }
         #calibrating-step { font-size: 3rem; color: white; }
         #emergency-status { font-size: 3rem; color: green; }
+        h1 {
+            margin-bottom: 50px;
+            font-weight: 300;
+        }
+        #heading {
+            font-size: 3rem;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Calibrating Status</h1>
-        <div id="calibrating-step">0/5</div>
-        <p><span id="calibrating-test">No calibration in progress</span></p>
-    </div>
-    <div class="card">
-        <h1>Motor RPM</h1>
-        <div id="rpm">0.00</div>
-        <p>Status: <span id="status">Connected</span></p>
-    </div>
-    <div class="card">
-        <h1>Control Mode</h1>
-        <div id="control-target">0</div>
-        <p>Mode <span id="control-mode">N/A</span></p>
+    <h1 id="heading">ESP32 Motor Driver Control Dashboard</h1>
+    <div class="dashboard-container">
+        <div class="card">
+            <h1>Calibrating Status</h1>
+            <div id="calibrating-step">0/5</div>
+            <p><span id="calibrating-test">No calibration in progress</span></p>
+        </div>
+        <div class="card">
+            <h1>Motor RPM</h1>
+            <div id="rpm">0.00</div>
+            <p>Connection Status: <span id="status">Connected</span></p>
+        </div>
+        <div class="card">
+            <h1>Control Mode</h1>
+            <div id="control-target">0</div>
+            <p>Mode: <span id="control-mode">N/A</span></p>
+        </div>
         <div class="card">
             <h1>Status</h1>
             <div id="emergency-status">Healthy</div>
@@ -74,21 +102,27 @@
                 document.getElementById('control-target').innerHTML = controlTarget;
 
                 let testGoal = "No calibration in progress"
-                switch (data.calibrate_step) {
+                switch (parseInt(data.calibrate_step)) {
                     case 0:
                         testGoal = "No calibration in progress";
+                        break;
                     case 1:
                         testGoal = "Minimum motor duty";
+                        break;
                     case 2:
                         testGoal = "Maximum motor speed";
+                        break;
                     case 3:
                         testGoal = "50% motor speed";
+                        break;
                     case 4:
                         testGoal = "80% motor speed";
+                        break;
                     case 5:
                         testGoal = "Waiting for confirmation to finish";
+                        break;
                 }
-                document.getElementById('calibrating-step').innerHTML = data.calibrate_step + "/5";
+                document.getElementById('calibrating-step').innerHTML = parseInt(data.calibrate_step) + "/5";
                 document.getElementById('calibrating-test').innerHTML = testGoal;
 
                 document.getElementById('rotation-count').innerHTML = data.rotation;
