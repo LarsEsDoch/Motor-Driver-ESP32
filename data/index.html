@@ -24,6 +24,7 @@
         #control-target { font-size: 3rem; color: white; }
         #status { color: green; }
         #calibrating-step { font-size: 3rem; color: white; }
+        #emergency-status { font-size: 3rem; color: green; }
     </style>
 </head>
 <body>
@@ -41,6 +42,12 @@
         <h1>Control Mode</h1>
         <div id="control-target">0</div>
         <p>Mode <span id="control-mode">N/A</span></p>
+        <div class="card">
+            <h1>Status</h1>
+            <div id="emergency-status">Healthy</div>
+            <p>Rotation: <span id="rotation-count">N/A</span></p>
+            <p>Pot value: <span id="pot-value">N/A</span></p>
+        </div>
     </div>
     <script>
         var gateway = `ws://${window.location.hostname}/ws`;
@@ -83,6 +90,16 @@
                 }
                 document.getElementById('calibrating-step').innerHTML = data.calibrate_step + "/5";
                 document.getElementById('calibrating-test').innerHTML = testGoal;
+
+                document.getElementById('rotation-count').innerHTML = data.rotation;
+                document.getElementById('pot-value').innerHTML = data.pot;
+                if (data.emergency) {
+                    document.getElementById('emergency-status').innerHTML = "Emergency!";
+                    document.getElementById('emergency-status').style.color = "red";
+                } else {
+                    document.getElementById('emergency-status').innerHTML = "Healthy!";
+                    document.getElementById('emergency-status').style.color = "green";
+                }
             };
 
             websocket.onclose = (event) => {
