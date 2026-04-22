@@ -50,6 +50,11 @@
         #heading {
             font-size: 3rem;
         }
+        #pid-output {
+            display: none;
+            font-weight: bold;
+            color: #00bcd4;
+        }
     </style>
 </head>
 <body>
@@ -68,6 +73,7 @@
         <div class="card">
             <h1>Control Mode</h1>
             <div id="control-target">0</div>
+            <p><span id="pid-output">0</span></p>
             <p>Mode: <span id="control-mode">N/A</span></p>
         </div>
         <div class="card">
@@ -94,9 +100,14 @@
 
                 let controlMode = "Voltage"
                 let controlTarget = data.target_speed;
+                let pidElement = document.getElementById("pid-output");
                 if (data.control_mode === 1) {
                     controlMode = "RPM";
                     controlTarget = data.target_rpm
+                    pidElement.style.display = "block";
+                    pidElement.innerHTML = "PID: " + data.pid_output;
+                } else {
+                    pidElement.style.display = "none";
                 }
                 document.getElementById('control-mode').innerHTML = controlMode;
                 document.getElementById('control-target').innerHTML = controlTarget;

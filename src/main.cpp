@@ -582,6 +582,7 @@ void loop() {
         json += "\"rotation\":" + String(debugTickCount) + ",";
         json += "\"target_rpm\":" + String(targetRPM) + ",";
         json += "\"target_speed\":" + String(motorSpeed) + ",";
+        json += "\"pid_output\":" + String(currentSpeed) + ",";
         json += "\"control_mode\":" + String(controlMode) + ",";
         json += "\"emergency\":" + String(emergencyStop) + ",";
         json += "\"calibrate_step\":" + String(calibrateStep);
