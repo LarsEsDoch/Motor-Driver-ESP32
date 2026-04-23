@@ -21,7 +21,7 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 20px;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             padding: 20px;
             max-width: 600px;
             margin: 0 auto;
@@ -44,10 +44,10 @@
         #calibrating-step { font-size: 3rem; color: white; }
         #emergency-status { font-size: 3rem; color: green; }
         h1 {
-            margin-bottom: 50px;
             font-weight: 300;
         }
         #heading {
+            margin-bottom: 50px;
             font-size: 3rem;
         }
         #pid-output {
@@ -79,8 +79,8 @@
         <div class="card">
             <h1>Status</h1>
             <div id="emergency-status">Healthy</div>
-            <p>Rotation: <span id="rotation-count">N/A</span></p>
-            <p>Pot value: <span id="pot-value">N/A</span></p>
+            <p>Rotation: <span id="rotation-count">0</span></p>
+            <p>Pot value: <span id="pot-value">0</span></p>
         </div>
     </div>
     <script>
@@ -99,7 +99,7 @@
                 document.getElementById('rpm').style.color = color;
 
                 let controlMode = "Voltage"
-                let controlTarget = data.target_speed;
+                let controlTarget = parseInt(data.target_speed) / 4095 + "%";
                 let pidElement = document.getElementById("pid-output");
                 if (data.control_mode === 1) {
                     controlMode = "RPM";
