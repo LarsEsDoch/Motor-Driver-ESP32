@@ -147,6 +147,23 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 
                 Serial.printf("Message received: %s\n", message.c_str());
 
+                if (message == "startCalibration") {
+                    calibrating = true;
+                    calibrateStep = 1;
+                    minStartDuty = 0;
+                    Serial.println("Started calibration via web socket.");
+                }
+
+                if (message == "toggleMode") {
+                    controlMode = (controlMode == 0) ? 1 : 0;
+                    Serial.printf("Changed control mode via web server to: %s.\n", controlMode == 1 ? "RPM" : "Voltage");
+                }
+
+                if (message == "emergencyStop") {
+                    emergencyStop = !emergencyStop;
+                    Serial.printf("Emergency stop %s via web server.\n", emergencyStop ? "activated" : "deactivated");
+                }
+            }
             break;
         }
         case WS_EVT_PONG:
@@ -613,7 +630,7 @@ void loop() {
         json += "\"min_duty\":" + String(minStartDuty) + ",";
         json += "\"max_rpm\":" + String(maxRPM, 2) + ",";
         json += "\"kp\":" + String(Kp, 4) + ",";
-        json += "\"ki\":" + String(Ki, 4) + ",";
+        json += "\"ki\":" + String(Ki, 4);
         json += "}";
 
         ws.textAll(json);
