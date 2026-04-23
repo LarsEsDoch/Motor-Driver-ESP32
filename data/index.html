@@ -74,7 +74,14 @@
             <h1>Control Mode</h1>
             <div id="control-target">0</div>
             <p><span id="pid-output">0</span></p>
-            <p>Mode: <span id="control-mode">N/A</span></p>
+            <p>Mode: <span id="control-mode">Voltage</span></p>
+        </div>
+        <div class="card">
+            <h1>PID Values</h1>
+            <p>Minimum start duty: <span id="min-duty">0</span></p>
+            <p>Maximum RPM: <span id="max-rpm">0.00</span></p>
+            <p>Kp: <span id="kp">0.0000</span></p>
+            <p>Ki: <span id="ki">0.0000</span></p>
         </div>
         <div class="card">
             <h1>Status</h1>
@@ -90,6 +97,7 @@
             websocket = new WebSocket(gateway);
             websocket.onmessage = (event) => {
                 let data = JSON.parse(event.data);
+                console.log(data);
 
                 document.getElementById('rpm').innerHTML = data.rpm;
 
@@ -145,6 +153,11 @@
                     document.getElementById('emergency-status').innerHTML = "Healthy!";
                     document.getElementById('emergency-status').style.color = "green";
                 }
+
+                document.getElementById('min-duty').innerHTML = data.min_duty;
+                document.getElementById('max-rpm').innerHTML = data.max_rpm;
+                document.getElementById('kp').innerHTML = data.kp;
+                document.getElementById('ki').innerHTML = data.ki;
             };
 
             websocket.onclose = (event) => {

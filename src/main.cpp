@@ -585,7 +585,11 @@ void loop() {
         json += "\"pid_output\":" + String(currentSpeed) + ",";
         json += "\"control_mode\":" + String(controlMode) + ",";
         json += "\"emergency\":" + String(emergencyStop) + ",";
-        json += "\"calibrate_step\":" + String(calibrateStep);
+        json += "\"calibrate_step\":" + String(calibrateStep) + ",";
+        json += "\"min_duty\":" + String(minStartDuty) + ",";
+        json += "\"max_rpm\":" + String(maxRPM, 2) + ",";
+        json += "\"kp\":" + String(Kp, 4) + ",";
+        json += "\"ki\":" + String(Ki, 4) + ",";
         json += "}";
 
         ws.textAll(json);
