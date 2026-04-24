@@ -120,7 +120,7 @@
             <h1>Controls</h1>
             <label id="speed-slider-label" for="speed-slider">Speed:</label>
             <input type="range" id="speed-slider" name="volume" min="0" max="4095" value="0">
-            <button id="calibrate-button onclick="startCalibration()">Start calibration</button>
+            <button id="calibrate-button" onclick="startCalibration()">Start calibration</button>
             <button id="control-button" onclick="toggleMotorMode()">Switch control mode</button>
             <button id="emergency-button" onclick="toggleEmergency()">Emergency</button>
         </div>
@@ -144,13 +144,18 @@
                 let controlMode = "Voltage"
                 let controlTarget = parseInt(data.target_speed) / 4095 * 100 + "%";
                 let pidElement = document.getElementById("pid-output");
+                const slider = document.getElementById('speed-slider');
                 if (data.control_mode === 1) {
                     controlMode = "RPM";
                     controlTarget = data.target_rpm
                     pidElement.style.display = "block";
                     pidElement.innerHTML = "PID: " + data.pid_output;
+
+                    slider.max = data.max_rpm;
                 } else {
                     pidElement.style.display = "none";
+
+                    slider.max = "4095";
                 }
                 document.getElementById('control-mode').innerHTML = controlMode;
                 document.getElementById('control-target').innerHTML = controlTarget;
@@ -202,6 +207,16 @@
                 document.getElementById('rpm').innerHTML = 0.00;
                 setTimeout(() => { window.location.reload(); }, 2000);
             };
+        });
+
+        const speedSlider = document.getElementById("speed-slider");
+
+        speedSlider.addEventListener("input", function() {
+            let data = {
+                type: "speed",
+                value: speedSlider.value
+            };
+            websocket.send(JSON.stringify(data));
         });
 
         function startCalibration() {

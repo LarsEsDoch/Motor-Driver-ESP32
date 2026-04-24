@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <FastLED.h>
 #include <Preferences.h>
 #include <WiFi.h>
@@ -144,6 +145,24 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
             if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
                 data[len] = 0;
                 String message = (char*)data;
+
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, message);
+
+                if (!error) {
+                    const char* sliderType = doc["type"];
+                    int val = doc["value"];
+
+                    if (strcmp(sliderType, "speed") == 0) {
+                        if (controlMode == 0) {
+                            motorSpeed = val;
+                        } else {
+                            targetRPM = val;
+                        }
+                        Serial.printf("Slider Speed changed over web server: %d\n", val);
+                    }
+                }
+
 
                 Serial.printf("Message received: %s\n", message.c_str());
 
