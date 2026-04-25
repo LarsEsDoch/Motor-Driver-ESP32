@@ -132,6 +132,12 @@ void IRAM_ATTR pulseISR() {
     }
 }
 
+void playClick(int freq, int duration) {
+    ledcWriteTone(speakerChannel, freq);
+    delay(duration);
+    ledcWriteTone(speakerChannel, 0);
+}
+
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
     switch (type) {
         case WS_EVT_CONNECT:
@@ -157,6 +163,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                         if (controlMode == 0) {
                             motorSpeed = val;
                             ledcWrite(motorChannel, motorSpeed);
+                            playClick(150, 50);
                         } else {
                             targetRPM = val;
                         }
@@ -170,11 +177,15 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                         calibrateStep = 1;
                         minStartDuty = 0;
                         Serial.println("Started calibration via web socket.");
+                        playClick(1500, 500);
                     }
 
                     if (message == "toggleMode") {
                         controlMode = (controlMode == 0) ? 1 : 0;
+                        motorSpeed = 0;
+                        targetRPM = 0;
                         Serial.printf("Changed control mode via web server to: %s.\n", controlMode == 1 ? "RPM" : "Voltage");
+                        playClick(1000, 200);
                     }
 
                     if (message == "emergencyStop") {
@@ -250,12 +261,6 @@ void setup() {
     server.begin();
 
     Serial.println("HTTP server started");
-}
-
-void playClick(int freq, int duration) {
-    ledcWriteTone(speakerChannel, freq);
-    delay(duration);
-    ledcWriteTone(speakerChannel, 0);
 }
 
 void test() {
@@ -707,6 +712,8 @@ void loop() {
 
             if (!modeActionExecuted && totalDuration < 3000 && totalDuration > 50) {
                 controlMode = (controlMode == 0) ? 1 : 0;
+                motorSpeed = 0;
+                targetRPM = 0;
                 Serial.printf("Control mode set to %s\n", controlMode == 1 ? "rpm" : "voltage");
                 playClick(2000, 100);
             }

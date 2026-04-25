@@ -128,6 +128,8 @@
     <script>
         var gateway = `ws://${window.location.hostname}/ws`;
         var websocket;
+        const speedSlider = document.getElementById("speed-slider");
+        var oldControlMode = "Voltage";
         window.addEventListener('load', () => {
             websocket = new WebSocket(gateway);
             websocket.onmessage = (event) => {
@@ -156,6 +158,10 @@
                     pidElement.style.display = "none";
 
                     slider.max = "4095";
+                }
+                if (data.control_mode !== oldControlMode) {
+                    speedSlider.value = 0;
+                    oldControlMode = data.control_mode;
                 }
                 document.getElementById('control-mode').innerHTML = controlMode;
                 document.getElementById('control-target').innerHTML = controlTarget;
@@ -189,6 +195,7 @@
                 if (data.emergency) {
                     document.getElementById('emergency-status').innerHTML = "Emergency!";
                     document.getElementById('emergency-status').style.color = "red";
+                    speedSlider.value = 0;
                 } else {
                     document.getElementById('emergency-status').innerHTML = "Healthy!";
                     document.getElementById('emergency-status').style.color = "green";
@@ -205,11 +212,10 @@
                 status.innerHTML = "Disconnected";
                 status.style.color = "red";
                 document.getElementById('rpm').innerHTML = 0.00;
+                speedSlider.value = 0;
                 setTimeout(() => { window.location.reload(); }, 2000);
             };
         });
-
-        const speedSlider = document.getElementById("speed-slider");
 
         speedSlider.addEventListener("input", function() {
             let data = {
