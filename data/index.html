@@ -142,12 +142,12 @@
                 document.getElementById('rpm').style.color = color;
 
                 let controlMode = "Voltage"
-                let controlTarget = parseInt(data.target_speed) / 4095 * 100 + "%";
+                let controlTarget = (parseInt(data.target_speed) / 4095 * 100).toFixed(2) + "%";
                 let pidElement = document.getElementById("pid-output");
                 const slider = document.getElementById('speed-slider');
                 if (data.control_mode === 1) {
                     controlMode = "RPM";
-                    controlTarget = data.target_rpm
+                    controlTarget = data.target_rpm + " RPM"
                     pidElement.style.display = "block";
                     pidElement.innerHTML = "PID: " + data.pid_output;
 

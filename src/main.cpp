@@ -156,31 +156,35 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                     if (strcmp(sliderType, "speed") == 0) {
                         if (controlMode == 0) {
                             motorSpeed = val;
+                            ledcWrite(motorChannel, motorSpeed);
                         } else {
                             targetRPM = val;
                         }
                         Serial.printf("Slider Speed changed over web server: %d\n", val);
                     }
-                }
+                } else {
+                    Serial.printf("Message received: %s\n", message.c_str());
 
+                    if (message == "startCalibration") {
+                        calibrating = true;
+                        calibrateStep = 1;
+                        minStartDuty = 0;
+                        Serial.println("Started calibration via web socket.");
+                    }
 
-                Serial.printf("Message received: %s\n", message.c_str());
+                    if (message == "toggleMode") {
+                        controlMode = (controlMode == 0) ? 1 : 0;
+                        Serial.printf("Changed control mode via web server to: %s.\n", controlMode == 1 ? "RPM" : "Voltage");
+                    }
 
-                if (message == "startCalibration") {
-                    calibrating = true;
-                    calibrateStep = 1;
-                    minStartDuty = 0;
-                    Serial.println("Started calibration via web socket.");
-                }
-
-                if (message == "toggleMode") {
-                    controlMode = (controlMode == 0) ? 1 : 0;
-                    Serial.printf("Changed control mode via web server to: %s.\n", controlMode == 1 ? "RPM" : "Voltage");
-                }
-
-                if (message == "emergencyStop") {
-                    emergencyStop = !emergencyStop;
-                    Serial.printf("Emergency stop %s via web server.\n", emergencyStop ? "activated" : "deactivated");
+                    if (message == "emergencyStop") {
+                        emergencyStop = !emergencyStop;
+                        testing = false;
+                        calibrating = false;
+                        calibrateStep = 0;
+                        ledcWriteTone(speakerChannel, 0);
+                        Serial.printf("Emergency stop %s via web server.\n", emergencyStop ? "activated" : "deactivated");
+                    }
                 }
             }
             break;
