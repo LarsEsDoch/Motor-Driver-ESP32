@@ -626,7 +626,7 @@ void loop() {
     }
 
     static uint32_t lastUpload = 0;
-    if (millis() - lastUpload > 100) {
+    if (millis() - lastUpload > 200) {
         static float lastRPM = 0;
         const float tolerance = 200.0f;
         if (micros() - lastPulseMicros > 2000000) {

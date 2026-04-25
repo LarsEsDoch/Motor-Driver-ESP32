@@ -217,12 +217,20 @@
             };
         });
 
+        let lastSendTime = 0;
+        const throttleDelay = 50;
+
         speedSlider.addEventListener("input", function() {
-            let data = {
-                type: "speed",
-                value: speedSlider.value
-            };
-            websocket.send(JSON.stringify(data));
+            let now = Date.now()
+
+            if (now - lastSendTime >= throttleDelay) {
+                let data = {
+                    type: "speed",
+                    value: speedSlider.value
+                };
+                websocket.send(JSON.stringify(data));
+                lastSendTime = now;
+            }
         });
 
         function startCalibration() {
