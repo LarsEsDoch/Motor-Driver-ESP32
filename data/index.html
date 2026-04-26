@@ -58,7 +58,7 @@
         button {
             padding: 5px;
             margin: 5px;
-            border-radius: 10px;
+            border-radius: 20px;
             font-size: 1.5rem;
             border: none;
         }
@@ -78,6 +78,9 @@
         }
         #emergency-button {
             background: #ff7171;
+            font-size: 3rem;
+            padding: 10px;
+            border-radius: 40px;
         }
         #emergency-button:active {
             background: #ff2c2c;
@@ -123,9 +126,10 @@
             <button id="calibrate-button" onclick="startCalibration()">Start calibration</button>
             <button id="test-button" onclick="toggleTest()">Start test</button>
             <button id="control-button" onclick="toggleMotorMode()">Switch control mode</button>
-            <button id="emergency-button" onclick="toggleEmergency()">Emergency</button>
         </div>
+
     </div>
+    <button id="emergency-button" onclick="toggleEmergency()">Emergency</button>
     <script>
         var gateway = `ws://${window.location.hostname}/ws`;
         var websocket;
@@ -219,7 +223,7 @@
         });
 
         let lastSendTime = 0;
-        const throttleDelay = 50;
+        const throttleDelay = 100;
 
         speedSlider.addEventListener("input", function() {
             let now = Date.now()
@@ -232,6 +236,14 @@
                 websocket.send(JSON.stringify(data));
                 lastSendTime = now;
             }
+        });
+
+        speedSlider.addEventListener("change", function() {
+            let data = {
+                type: "speedChange",
+                value: speedSlider.value
+            };
+            websocket.send(JSON.stringify(data));
         });
 
         function startCalibration() {

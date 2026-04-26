@@ -159,15 +159,17 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                     const char* sliderType = doc["type"];
                     int val = doc["value"];
 
-                    if (strcmp(sliderType, "speed") == 0) {
+                    if (strcmp(sliderType, "speed") == 0 || strcmp(sliderType, "speedChange") == 0) {
                         if (controlMode == 0) {
                             motorSpeed = val;
                             ledcWrite(motorChannel, motorSpeed);
-                            playClick(150, 50);
                         } else {
                             targetRPM = val;
                         }
                         Serial.printf("Slider Speed changed over web server: %d\n", val);
+                    }
+                    if (strcmp(sliderType, "speedChange") == 0) {
+                        playClick(3000, 20);
                     }
                 } else {
                     Serial.printf("Message received: %s\n", message.c_str());
@@ -177,7 +179,8 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                         calibrateStep = 1;
                         minStartDuty = 0;
                         Serial.println("Started calibration via web socket.");
-                        playClick(1500, 500);
+                        playClick(1000, 500);
+                    }
 
                     if (message == "toggleTest") {
                         testing = !testing;
@@ -190,7 +193,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                         motorSpeed = 0;
                         targetRPM = 0;
                         Serial.printf("Changed control mode via web server to: %s.\n", controlMode == 1 ? "RPM" : "Voltage");
-                        playClick(1000, 200);
+                        playClick(1000, 100);
                     }
 
                     if (message == "emergencyStop") {
