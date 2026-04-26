@@ -125,7 +125,7 @@
             <input type="range" id="speed-slider" name="volume" min="0" max="4095" value="0">
             <button id="calibrate-button" onclick="toggleCalibration()">Start calibration</button>
             <button id="test-button" onclick="toggleTest()">Start test</button>
-            <button id="control-button" onclick="toggleMotorMode()">Switch control mode</button>
+            <button id="control-button" onclick="toggleMotorMode()">Switch to RPM control</button>
         </div>
 
     </div>
@@ -159,10 +159,12 @@
                     pidElement.innerHTML = "PID: " + data.pid_output;
 
                     slider.max = data.max_rpm;
+                    document.getElementById('control-button').innerHTML = "Switch to voltage control";
                 } else {
                     pidElement.style.display = "none";
 
                     slider.max = "4095";
+                    document.getElementById('control-button').innerHTML = "Switch to RPM control";
                 }
                 if (data.control_mode !== oldControlMode) {
                     speedSlider.value = 0;
