@@ -178,6 +178,11 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                         minStartDuty = 0;
                         Serial.println("Started calibration via web socket.");
                         playClick(1500, 500);
+
+                    if (message == "toggleTest") {
+                        testing = !testing;
+                        Serial.printf("%s test mode via web server.\n", controlMode == 1 ? "Activated" : "Deactivated");
+                        playClick(1000, 200);
                     }
 
                     if (message == "toggleMode") {
