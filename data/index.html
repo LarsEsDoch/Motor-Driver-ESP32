@@ -123,7 +123,7 @@
             <h1>Controls</h1>
             <label id="speed-slider-label" for="speed-slider">Speed:</label>
             <input type="range" id="speed-slider" name="volume" min="0" max="4095" value="0">
-            <button id="calibrate-button" onclick="startCalibration()">Start calibration</button>
+            <button id="calibrate-button" onclick="toggleCalibration()">Start calibration</button>
             <button id="test-button" onclick="toggleTest()">Start test</button>
             <button id="control-button" onclick="toggleMotorMode()">Switch control mode</button>
         </div>
@@ -246,8 +246,14 @@
             websocket.send(JSON.stringify(data));
         });
 
-        function startCalibration() {
-            websocket.send("startCalibration");
+        let calibrateButton = document.getElementById("calibrate-button");
+        function toggleCalibration() {
+            websocket.send("toggleCalibration");
+            if (calibrateButton.innerHTML === "Start calibration") {
+                calibrateButton.innerHTML = "Stop calibration";
+            } else {
+                calibrateButton.innerHTML = "Start calibration";
+            }
         }
 
         let testButton = document.getElementById("test-button");

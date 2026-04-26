@@ -174,11 +174,16 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                 } else {
                     Serial.printf("Message received: %s\n", message.c_str());
 
-                    if (message == "startCalibration") {
-                        calibrating = true;
-                        calibrateStep = 1;
-                        minStartDuty = 0;
-                        Serial.println("Started calibration via web socket.");
+                    if (message == "toggleCalibration") {
+                        if (!calibrating) {
+                            calibrating = true;
+                            calibrateStep = 1;
+                            Serial.println("Calibration started via web socket.");
+                        } else {
+                            calibrating = false;
+                            calibrateStep = 0;
+                            Serial.println("Calibration cancelled via web socket. Returned to old values.");
+                        }
                         playClick(1000, 500);
                     }
 
@@ -751,13 +756,17 @@ void loop() {
     } else {
         if (CalibrateButtonWasPressed) {
             if (millis() - CalibrateButtonPressStartTime < 3000) {
-                calibrating = true;
-                calibrateStep = 1;
-                minStartDuty = 0;
+                if (!calibrating) {
+                    calibrating = true;
+                    calibrateStep = 1;
+                    Serial.println("Calibration started.");
+                } else {
+                    calibrating = false;
+                    calibrateStep = 0;
+                    Serial.println("Calibration cancelled. Returned to old values.");
+                }
 
                 playClick(2000, 100);
-
-                Serial.println("Calibration started.");
             }
             CalibrateButtonWasPressed = false;
         }
