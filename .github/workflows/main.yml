@@ -7,12 +7,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/cache@v4
         with:
           path: ~/.platformio
           key: platformio-${{ hashFiles('platformio.ini') }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - run: pip install platformio
-      - run: pio run
+
+      - name: Create dummy secrets.h
+        run: |
+          echo '#pragma once' > src/secrets.h
+          echo '#define WIFI_SSID "ci-dummy"' >> src/secrets.h
+          echo '#define WIFI_PASS "ci-dummy"' >> src/secrets.h
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build
+        run: pio run
