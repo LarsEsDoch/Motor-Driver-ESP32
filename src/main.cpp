@@ -1,223 +1,16 @@
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <FastLED.h>
 #include <Preferences.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include "LittleFS.h"
-
-Preferences preferences;
-
 #include "secrets.h"
-
-#define STATUS_LED_PIN 48
-
-CRGB leds[1];
-
-#define POT_PIN 15
-#define CALIBRATE_BUTTON_PIN 16
-#define MODE_BUTTON_PIN 17
-#define EMERGENCY_STOP_BUTTON_PIN 18
-
-#define MOTOR_PIN 14
-
-#define SPEAKER_PIN 4
-
-#define SENSOR_PIN 12
-
-const int speakerChannel = 0;
-const int freqSpeaker = 2000;
-const int resolutionSpeaker = 8;
-
-uint16_t motorSpeed = 0;
-
-uint16_t minStartDuty = 0;
-
-const int motorChannel = 2;
-const int freqMotor = 8000;
-const int resolutionMotor = 12;
-
-uint16_t currentSpeed = 0;
-float accelInertia = 0.5f;
-float decelInertia = 0.25f;
-
-volatile uint32_t lastPulseMicros = 0;
-volatile uint32_t latestDuration = 0;
-volatile bool newPulseReceived = false;
-
-volatile float currentRPM = 0;
-float smoothedRPM = 0;
-float displayRPM = 0;
-
-uint32_t tuneTimer = 0;
-float rpmAt50 = 0;
-float systemGain = 0;
-float timeConstant = 0;
-
-float targetRPM = 0;
-float Kp = 0.8f;
-float Ki = 0.1f;
-float integrator = 0;
-float maxRPM = 2000.0f;
-const float INTEGRATOR_CLAMP = 500.0f;
-
-static float lastRPM = 0;
-static uint32_t lastCheckTime = 0;
-float acceleration = 0;
-
-volatile uint32_t debugTickCount = 0;
-
-const float ADC_MIN = 50.0f;
-const float ADC_MAX = 4046.0f;
-const float ADC_TOLERANCE = 40.0f;
-
-static float smoothedPot = 0;
-
-static float lastTriggeredPot = 0;
-
-bool emergencyStop = false;
-bool calibrating = false;
-int calibrateStep = 0;
-bool testing = false;
-
-uint8_t ledBrightness = 0;
-
-volatile bool triggerFlash = false;
-uint32_t flashDurationUS = 100;
-
-int controlMode = 0;
-
-enum class DebugLevel {NONE = 0, INFO = 1, DEBUG = 2, VERBOSE = 3};
-DebugLevel currentDebugLevel = DebugLevel::INFO;
-
-volatile bool firstIntervalSeeded = false;
-
-AsyncWebServer server(80);
-AsyncWebSocket ws("/ws");
-
-void IRAM_ATTR pulseISR() {
-    uint32_t now = micros();
-
-    if (lastPulseMicros == 0) {
-        lastPulseMicros = now;
-        return;
-    }
-
-    uint32_t duration = now - lastPulseMicros;
-
-    if (duration > 1000000) {
-        lastPulseMicros = now;
-        latestDuration = 0;
-        firstIntervalSeeded = false;
-        return;
-    }
-
-    uint32_t minDuration = (latestDuration > 0) ? (latestDuration / 2) : 5000;
-    if (minDuration < 5000) minDuration = 5000;
-
-    if (duration > minDuration) {
-        lastPulseMicros = now;
-
-        if (!firstIntervalSeeded) {
-            latestDuration = duration;
-            firstIntervalSeeded = true;
-            return;
-        }
-
-        latestDuration = duration;
-        newPulseReceived = true;
-        debugTickCount++;
-
-        triggerFlash = true;
-    }
-}
-
-void playClick(int freq, int duration) {
-    ledcWriteTone(speakerChannel, freq);
-    delay(duration);
-    ledcWriteTone(speakerChannel, 0);
-}
-
-void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
-    switch (type) {
-        case WS_EVT_CONNECT:
-            Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
-            break;
-        case WS_EVT_DISCONNECT:
-            Serial.printf("WebSocket client #%u disconnected\n", client->id());
-            break;
-        case WS_EVT_DATA: {
-            AwsFrameInfo *info = (AwsFrameInfo*)arg;
-            if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-                data[len] = 0;
-                String message = (char*)data;
-
-                JsonDocument doc;
-                DeserializationError error = deserializeJson(doc, message);
-
-                if (!error) {
-                    const char* sliderType = doc["type"];
-                    int val = doc["value"];
-
-                    if (strcmp(sliderType, "speed") == 0 || strcmp(sliderType, "speedChange") == 0) {
-                        if (controlMode == 0) {
-                            motorSpeed = val;
-                            ledcWrite(motorChannel, motorSpeed);
-                        } else {
-                            targetRPM = val;
-                        }
-                        Serial.printf("Slider Speed changed over web server: %d\n", val);
-                    }
-                    if (strcmp(sliderType, "speedChange") == 0) {
-                        playClick(3000, 20);
-                    }
-                } else {
-                    Serial.printf("Message received: %s\n", message.c_str());
-
-                    if (message == "toggleCalibration") {
-                        if (!calibrating) {
-                            calibrating = true;
-                            calibrateStep = 1;
-                            Serial.println("Calibration started via web socket.");
-                        } else {
-                            calibrating = false;
-                            calibrateStep = 0;
-                            Serial.println("Calibration cancelled via web socket. Returned to old values.");
-                        }
-                        playClick(1000, 500);
-                    }
-
-                    if (message == "toggleTest") {
-                        testing = !testing;
-                        Serial.printf("%s test mode via web server.\n", controlMode == 1 ? "Activated" : "Deactivated");
-                        playClick(1000, 200);
-                    }
-
-                    if (message == "toggleMode") {
-                        controlMode = (controlMode == 0) ? 1 : 0;
-                        motorSpeed = 0;
-                        targetRPM = 0;
-                        Serial.printf("Changed control mode via web server to: %s.\n", controlMode == 1 ? "RPM" : "Voltage");
-                        playClick(1000, 100);
-                    }
-
-                    if (message == "emergencyStop") {
-                        emergencyStop = !emergencyStop;
-                        testing = false;
-                        calibrating = false;
-                        calibrateStep = 0;
-                        ledcWriteTone(speakerChannel, 0);
-                        Serial.printf("Emergency stop %s via web server.\n", emergencyStop ? "activated" : "deactivated");
-                    }
-                }
-            }
-            break;
-        }
-        case WS_EVT_PONG:
-        case WS_EVT_ERROR:
-            break;
-    }
-}
+#include "config.h"
+#include "globals.h"
+#include "motor.h"
+#include "calibrate.h"
+#include "test.h"
+#include "websocket.h"
 
 void setup() {
     Serial.begin(921600);
@@ -262,12 +55,12 @@ void setup() {
     ws.onEvent(onEvent);
     server.addHandler(&ws);
 
-    if(!LittleFS.begin()){
+    if (!LittleFS.begin()) {
         Serial.println("An Error has occurred while mounting LittleFS");
         return;
     }
 
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(LittleFS, "/index.html", "text/html");
     });
 
@@ -276,348 +69,8 @@ void setup() {
     Serial.println("HTTP server started");
 }
 
-void test() {
-    Serial.println("Starting Frequency Sweep (200Hz - 10000Hz)...");
-
-    for (int freq = 100; freq <= 20000; freq += 100) {
-        ledcWriteTone(speakerChannel, freq);
-        Serial.printf("Frequency: %i\n", freq);
-        delay(40);
-    }
-
-    ledcWriteTone(speakerChannel, 0);
-    Serial.println("Sweep finished.");
-
-    Serial.println("Motor starts up...");
-    for (int dutyCycle = 0; dutyCycle <= 4095; dutyCycle += 8) {
-        ledcWrite(motorChannel, dutyCycle);
-        Serial.printf("Speed: %i\n", dutyCycle);
-        delay(20);
-    }
-
-    Serial.println("Maximum speed reached.");
-    delay(1000);
-    Serial.println("3");
-    delay(1000);
-    Serial.println("2");
-    delay(1000);
-    Serial.println("1");
-    delay(1000);
-    Serial.println("0");
-    delay(1000);
-
-    Serial.println("Motor slows down...");
-    for (int dutyCycle = 4095; dutyCycle >= 0; dutyCycle -= 8) {
-        ledcWrite(motorChannel, dutyCycle);
-        Serial.printf("Speed: %i\n", dutyCycle);
-        delay(20);
-    }
-
-    Serial.println("Start LED rainbow test.");
-    FastLED.setBrightness(255);
-    for (int hue = 0; hue < 256; hue++) {
-        leds[0] = CHSV(hue, 255, 255);
-        FastLED.show();
-        Serial.printf("Hue: %i\n", hue);
-
-        delay(15);
-    }
-    leds[0] = CRGB::White;
-    FastLED.setBrightness(ledBrightness);
-    FastLED.show();
-
-    Serial.println("Finished test.");
-}
-
-void calibrate() {
-    switch (calibrateStep) {
-        case 1: {
-            static uint32_t lastStepTime = 0;
-            static uint16_t testDuty = 500;
-
-            uint32_t now = millis();
-
-            if (now - lastStepTime >= 300) {
-                lastStepTime = now;
-
-                if (smoothedRPM < 50.0f) {
-                    testDuty += 15;
-                    ledcWrite(motorChannel, testDuty);
-
-                    if (DebugLevel::DEBUG <= currentDebugLevel) {
-                        Serial.printf("Testing minDuty: %u | Current RPM: %.2f\n", testDuty, smoothedRPM);
-                    }
-                }
-
-                else {
-                    static uint8_t startCount = 0;
-                    startCount++;
-
-                    if (startCount >= 5) {
-                        minStartDuty = testDuty;
-                        Serial.printf("Auto-minDuty found: %u\n", minStartDuty);
-                        playClick(1000, 100);
-
-                        startCount = 0;
-                        calibrateStep = 2;
-                    }
-                }
-            }
-
-            if (testDuty > 2000) {
-                Serial.println("Calibration Error: Motor not starting!");
-                calibrating = false;
-                calibrateStep = 0;
-                ledcWrite(motorChannel, 0);
-            }
-            break;
-        }
-        case 2: {
-            ledcWrite(motorChannel, 4095);
-            if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                Serial.println("calibrate case 2 ledc 4095");
-            }
-
-            uint32_t now = millis();
-            if (now - lastCheckTime >= 200) {
-                float deltaTime = (now - lastCheckTime) / 1000.0f;
-                acceleration = (smoothedRPM - lastRPM) / deltaTime;
-
-                static uint8_t stableCount = 0;
-
-                if (abs(acceleration) < 50.0f && smoothedRPM > 500) {
-                    stableCount++;
-                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount, smoothedRPM, acceleration);
-
-                    if (stableCount >= 10) {
-                        maxRPM = smoothedRPM;
-                        stableCount = 0;
-                        Serial.printf("Max RPM confirmed: %.2f\n", maxRPM);
-                        playClick(1250, 200);
-                        tuneTimer = millis();
-                        calibrateStep = 3;
-                    }
-                } else {
-                    if (stableCount > 0) {
-                        if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount, acceleration);
-                    }
-                    stableCount = 0;
-                }
-
-                lastRPM = smoothedRPM;
-                lastCheckTime = now;
-            }
-            break;
-        }
-        case 3: {
-            ledcWrite(motorChannel, 2048);
-            if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                Serial.println("calibrate case e ledc 2048");
-            }
-
-            uint32_t now3 = millis();
-            if (now3 - lastCheckTime >= 200) {
-                float deltaTime = (now3 - lastCheckTime) / 1000.0f;
-                acceleration = (smoothedRPM - lastRPM) / deltaTime;
-
-                static uint8_t stableCount50 = 0;
-
-                if (abs(acceleration) < 30.0f && (now3 - tuneTimer > 5000)) {
-                    stableCount50++;
-                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount50, smoothedRPM, acceleration);
-
-                    if (stableCount50 >= 10) {
-                        rpmAt50 = smoothedRPM;
-                        playClick(1500, 300);
-                        Serial.printf("Base RPM at 50%% PWM stabilized: %.2f\n", rpmAt50);
-                        Serial.println("Jumping to 80%% PWM...");
-
-                        stableCount50 = 0;
-                        ledcWrite(motorChannel, 3276);
-                        if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                            Serial.println("calibrate case 3 ledc 3276");
-                        }
-                        tuneTimer = millis();
-                        lastCheckTime = millis();
-                        calibrateStep = 4;
-                    }
-                } else {
-                    if (stableCount50 > 0) {
-                        if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount50, acceleration);
-                    }
-                    stableCount50 = 0;
-                }
-
-                lastRPM = smoothedRPM;
-                lastCheckTime = now3;
-            }
-            break;
-        }
-        case 4: {
-            ledcWrite(motorChannel, 3276);
-            if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                Serial.println("calibrate case 4 ledc 3276");
-            }
-
-            uint32_t now4 = millis();
-            if (now4 - lastCheckTime >= 200) {
-                float deltaTime = (now4 - lastCheckTime) / 1000.0f;
-                acceleration = (smoothedRPM - lastRPM) / deltaTime;
-
-                static uint8_t stableCount80 = 0;
-
-                if (abs(acceleration) < 40.0f && (now4 - tuneTimer > 5000)) {
-                    stableCount80++;
-                    if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stable check %u/10 | RPM: %.2f | Accel: %.2f\n", stableCount80, smoothedRPM, acceleration);
-
-                    if (stableCount80 >= 10) {
-                        float rpmAt80 = smoothedRPM;
-                        float deltaRPM = rpmAt80 - rpmAt50;
-                        float deltaPWM = 3276.0f - 2048.0f;
-
-                        systemGain = deltaRPM / deltaPWM;
-
-                        float timeToStabilize = (now4 - tuneTimer) / 1000.0f;
-                        timeConstant = timeToStabilize / 3.0f;
-
-                        Serial.printf("RPM at 80%%: %.2f\n", rpmAt80);
-                        Serial.printf("System Gain (K): %.4f\n", systemGain);
-                        Serial.printf("Time Constant (Tau): %.2f sec\n", timeConstant);
-
-                        Kp = 0.5f / systemGain;
-
-                        Ki = (Kp / timeConstant) * 0.5f;
-
-                        Serial.printf("\n--- TUNING SUCCESSFUL ---\n");
-                        Serial.printf("Calculated Kp: %.4f | Ki: %.4f\n", Kp, Ki);
-                        Serial.println("Press Calibrate Button to save settings.");
-
-                        playClick(1750, 400);
-
-                        ledcWrite(motorChannel, 0);
-                        calibrateStep = 5;
-                    }
-                } else {
-                    if (stableCount80 > 0) {
-                        if (DebugLevel::DEBUG <= currentDebugLevel) Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount80, acceleration);
-                    }
-                    stableCount80 = 0;
-                }
-
-                lastRPM = smoothedRPM;
-                lastCheckTime = now4;
-            }
-            break;
-        }
-        default:
-            break;
-    }
-
-    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
-        switch (calibrateStep) {
-            case 5:
-                Serial.println("Calibration finished.");
-
-                preferences.begin("motor-settings", false);
-                preferences.putUShort("minDuty", minStartDuty);
-                preferences.putFloat("maxRPM", maxRPM);
-                preferences.putFloat("Kp", Kp);
-                preferences.putFloat("Ki", Ki);
-                preferences.end();
-
-                Serial.println("Saved settings to flash storage.");
-                playClick(2000, 500);
-                calibrating = false;
-                calibrateStep = 0;
-                break;
-            default:
-                break;
-        }
-        delay(300);
-    }
-}
-
-void readPot() {
-    int raw = analogRead(POT_PIN);
-    smoothedPot = (smoothedPot * 0.9f) + (static_cast<float>(raw) * 0.1f);
-}
-
-void adjustSpeed() {
-    if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
-        lastTriggeredPot = smoothedPot;
-        playClick(150, 10);
-
-        if (smoothedPot < (ADC_MIN + ADC_TOLERANCE)) {
-            motorSpeed = 0;
-            ledBrightness = 0;
-        } else {
-            float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
-
-            float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
-
-            motorSpeed = static_cast<uint16_t>((percent * (4095.0f - minStartDuty)) + minStartDuty);
-
-            ledBrightness = static_cast<uint8_t>(percent * 255.0f);
-        }
-
-        ledcWrite(motorChannel, motorSpeed);
-        if (DebugLevel::VERBOSE <= currentDebugLevel) {
-            Serial.printf("adjust speed %hu\n", motorSpeed);
-        }
-    }
-}
-
-void controlRPM() {
-    if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
-        lastTriggeredPot = smoothedPot;
-
-        float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
-        float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
-        targetRPM = percent * maxRPM;
-
-        playClick(150, 10);
-    }
-
-    if (targetRPM < 100) {
-        integrator = 0;
-        currentSpeed = 0;
-        ledcWrite(motorChannel, 0);
-        return;
-    }
-
-    if (smoothedRPM < 50 && targetRPM > 100) {
-        currentSpeed = minStartDuty;
-        ledcWrite(motorChannel, currentSpeed);
-        if (DebugLevel::VERBOSE <= currentDebugLevel) {
-            Serial.printf("Start-Kick: %hu\n", currentSpeed);
-        }
-        return;
-    }
-
-    float error = targetRPM - smoothedRPM;
-    integrator += error;
-    integrator = constrain(integrator, -INTEGRATOR_CLAMP, INTEGRATOR_CLAMP);
-
-    float output = (Kp * error) + (Ki * integrator);
-    currentSpeed += output;
-
-    if (currentSpeed < minStartDuty) {
-        currentSpeed = minStartDuty;
-    }
-
-    currentSpeed = constrain(currentSpeed, 0, 4095);
-    ledcWrite(motorChannel, (uint16_t)currentSpeed);
-
-    if (DebugLevel::VERBOSE <= currentDebugLevel) {
-        Serial.printf("PID Control: Target %.2f | Ist %.2f | PWM %hu\n", targetRPM, smoothedRPM, (uint16_t)currentSpeed);
-    }
-}
-
 void loop() {
     if (triggerFlash) {
-
-        //delayMicroseconds(flashDurationUS);
-
         triggerFlash = true;
     }
 
@@ -634,14 +87,16 @@ void loop() {
     static uint32_t lastSeenTick = 0;
 
     if (debugTickCount != lastSeenTick && currentDebugLevel <= DebugLevel::INFO) {
-        Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Target RPM: %.2f | Motor speed: %hu | Current speed: %.2hu | ADC Pot: %.2f \n", debugTickCount, currentRPM, smoothedRPM, targetRPM, motorSpeed, currentSpeed, smoothedPot);
+        Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Target RPM: %.2f | Motor speed: %hu | Current speed: %.2hu | ADC Pot: %.2f \n",
+            debugTickCount, currentRPM, smoothedRPM, targetRPM, motorSpeed, currentSpeed, smoothedPot);
         lastSeenTick = debugTickCount;
     }
 
     static uint32_t lastUpload = 0;
     if (millis() - lastUpload > 200) {
-        static float lastRPM = 0;
+        static float lastRPMDisplay = 0;
         const float tolerance = 200.0f;
+
         if (micros() - lastPulseMicros > 2000000) {
             displayRPM = (displayRPM * 0.5f) + (currentRPM * 0.5f);
         } else {
@@ -650,10 +105,9 @@ void loop() {
 
         int movementState = 1;
 
-        if (displayRPM > (lastRPM + tolerance)) {
+        if (displayRPM > (lastRPMDisplay + tolerance)) {
             movementState = 2;
-        }
-        else if (displayRPM < (lastRPM - tolerance)) {
+        } else if (displayRPM < (lastRPMDisplay - tolerance)) {
             movementState = 0;
         }
 
@@ -677,7 +131,7 @@ void loop() {
 
         ws.textAll(json);
         lastUpload = millis();
-        lastRPM = smoothedRPM;
+        lastRPMDisplay = smoothedRPM;
     }
 
     if (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW) {
@@ -710,9 +164,9 @@ void loop() {
                 playClick(1000, 100);
 
                 switch (currentDebugLevel) {
-                    case DebugLevel::NONE: Serial.println("NONE"); break;
-                    case DebugLevel::INFO: Serial.println("INFO"); break;
-                    case DebugLevel::DEBUG: Serial.println("DEBUG"); break;
+                    case DebugLevel::NONE:    Serial.println("NONE");    break;
+                    case DebugLevel::INFO:    Serial.println("INFO");    break;
+                    case DebugLevel::DEBUG:   Serial.println("DEBUG");   break;
                     case DebugLevel::VERBOSE: Serial.println("VERBOSE"); break;
                 }
 
@@ -737,26 +191,24 @@ void loop() {
         }
     }
 
-    static uint32_t CalibrateButtonPressStartTime = 0;
-    static bool CalibrateButtonWasPressed = false;
+    static uint32_t calibrateButtonPressStartTime = 0;
+    static bool calibrateButtonWasPressed = false;
 
     if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW && !calibrating) {
-        if (!CalibrateButtonWasPressed) {
-            CalibrateButtonPressStartTime = millis();
-            CalibrateButtonWasPressed = true;
+        if (!calibrateButtonWasPressed) {
+            calibrateButtonPressStartTime = millis();
+            calibrateButtonWasPressed = true;
         } else {
-            if (millis() - CalibrateButtonPressStartTime >= 3000) {
+            if (millis() - calibrateButtonPressStartTime >= 3000) {
                 testing = !testing;
-
                 playClick(2000, 100);
-
-                CalibrateButtonWasPressed = false;
+                calibrateButtonWasPressed = false;
                 Serial.printf("Test mode %s\n", testing ? "activated" : "deactivated");
             }
         }
     } else {
-        if (CalibrateButtonWasPressed) {
-            if (millis() - CalibrateButtonPressStartTime < 3000) {
+        if (calibrateButtonWasPressed) {
+            if (millis() - calibrateButtonPressStartTime < 3000) {
                 if (!calibrating) {
                     calibrating = true;
                     calibrateStep = 1;
@@ -766,10 +218,9 @@ void loop() {
                     calibrateStep = 0;
                     Serial.println("Calibration cancelled. Returned to old values.");
                 }
-
                 playClick(2000, 100);
             }
-            CalibrateButtonWasPressed = false;
+            calibrateButtonWasPressed = false;
         }
     }
 

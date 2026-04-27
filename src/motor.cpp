@@ -1,0 +1,121 @@
+#include <Arduino.h>
+#include "motor.h"
+#include "config.h"
+#include "globals.h"
+
+void playClick(int freq, int duration) {
+    ledcWriteTone(speakerChannel, freq);
+    delay(duration);
+    ledcWriteTone(speakerChannel, 0);
+}
+
+void IRAM_ATTR pulseISR() {
+    uint32_t now = micros();
+
+    if (lastPulseMicros == 0) {
+        lastPulseMicros = now;
+        return;
+    }
+
+    uint32_t duration = now - lastPulseMicros;
+
+    if (duration > 1000000) {
+        lastPulseMicros = now;
+        latestDuration = 0;
+        firstIntervalSeeded = false;
+        return;
+    }
+
+    uint32_t minDuration = (latestDuration > 0) ? (latestDuration / 2) : 5000;
+    if (minDuration < 5000) minDuration = 5000;
+
+    if (duration > minDuration) {
+        lastPulseMicros = now;
+
+        if (!firstIntervalSeeded) {
+            latestDuration = duration;
+            firstIntervalSeeded = true;
+            return;
+        }
+
+        latestDuration = duration;
+        newPulseReceived = true;
+        debugTickCount++;
+        triggerFlash = true;
+    }
+}
+
+void readPot() {
+    int raw = analogRead(POT_PIN);
+    smoothedPot = (smoothedPot * 0.9f) + (static_cast<float>(raw) * 0.1f);
+}
+
+void adjustSpeed() {
+    if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
+        lastTriggeredPot = smoothedPot;
+        playClick(150, 10);
+
+        if (smoothedPot < (ADC_MIN + ADC_TOLERANCE)) {
+            motorSpeed = 0;
+            ledBrightness = 0;
+        } else {
+            float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
+            float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
+            motorSpeed = static_cast<uint16_t>((percent * (4095.0f - minStartDuty)) + minStartDuty);
+            ledBrightness = static_cast<uint8_t>(percent * 255.0f);
+        }
+
+        ledcWrite(motorChannel, motorSpeed);
+
+        if (DebugLevel::VERBOSE <= currentDebugLevel) {
+            Serial.printf("adjust speed %hu\n", motorSpeed);
+        }
+    }
+}
+
+void controlRPM() {
+    if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
+        lastTriggeredPot = smoothedPot;
+
+        float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
+        float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
+        targetRPM = percent * maxRPM;
+
+        playClick(150, 10);
+    }
+
+    if (targetRPM < 100) {
+        integrator = 0;
+        currentSpeed = 0;
+        ledcWrite(motorChannel, 0);
+        return;
+    }
+
+    if (smoothedRPM < 50 && targetRPM > 100) {
+        currentSpeed = minStartDuty;
+        ledcWrite(motorChannel, currentSpeed);
+
+        if (DebugLevel::VERBOSE <= currentDebugLevel) {
+            Serial.printf("Start-Kick: %hu\n", currentSpeed);
+        }
+        return;
+    }
+
+    float error = targetRPM - smoothedRPM;
+    integrator += error;
+    integrator = constrain(integrator, -INTEGRATOR_CLAMP, INTEGRATOR_CLAMP);
+
+    float output = (Kp * error) + (Ki * integrator);
+    currentSpeed += output;
+
+    if (currentSpeed < minStartDuty) {
+        currentSpeed = minStartDuty;
+    }
+
+    currentSpeed = constrain(currentSpeed, 0, 4095);
+    ledcWrite(motorChannel, (uint16_t)currentSpeed);
+
+    if (DebugLevel::VERBOSE <= currentDebugLevel) {
+        Serial.printf("PID Control: Target %.2f | Ist %.2f | PWM %hu\n", targetRPM, smoothedRPM, (uint16_t)currentSpeed);
+    }
+}
