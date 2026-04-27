@@ -667,6 +667,7 @@ void loop() {
         json += "\"pid_output\":" + String(currentSpeed) + ",";
         json += "\"control_mode\":" + String(controlMode) + ",";
         json += "\"emergency\":" + String(emergencyStop) + ",";
+        json += "\"testing\":" + String(testing) + ",";
         json += "\"calibrate_step\":" + String(calibrateStep) + ",";
         json += "\"min_duty\":" + String(minStartDuty) + ",";
         json += "\"max_rpm\":" + String(maxRPM, 2) + ",";

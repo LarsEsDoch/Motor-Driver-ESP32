@@ -93,7 +93,7 @@
         <div class="card">
             <h1>Calibrating Status</h1>
             <div id="calibrating-step">0/5</div>
-            <p><span id="calibrating-test">No calibration in progress</span></p>
+            <p><span id="calibrating-info">No calibration in progress</span></p>
         </div>
         <div class="card">
             <h1>Motor RPM</h1>
@@ -125,7 +125,7 @@
             <input type="range" id="speed-slider" name="volume" min="0" max="4095" value="0">
             <button id="calibrate-button" onclick="toggleCalibration()">Start calibration</button>
             <button id="test-button" onclick="toggleTest()">Start test</button>
-            <button id="control-button" onclick="toggleMotorMode()">Switch to RPM control</button>
+            <button id="control-button" onclick="toggleMotorMode()">RPM control</button>
         </div>
 
     </div>
@@ -159,12 +159,12 @@
                     pidElement.innerHTML = "PID: " + data.pid_output;
 
                     slider.max = data.max_rpm;
-                    document.getElementById('control-button').innerHTML = "Switch to voltage control";
+                    document.getElementById('control-button').innerHTML = "Voltage control";
                 } else {
                     pidElement.style.display = "none";
 
                     slider.max = "4095";
-                    document.getElementById('control-button').innerHTML = "Switch to RPM control";
+                    document.getElementById('control-button').innerHTML = "RPM control";
                 }
                 if (data.control_mode !== oldControlMode) {
                     speedSlider.value = 0;
@@ -194,18 +194,35 @@
                         testGoal = "Waiting for confirmation to finish";
                         break;
                 }
+
+                if (parseInt(data.calibrate_step) > 0) {
+                    calibrateButton.innerHTML = "Stop calibration";
+                } else {
+                    calibrateButton.innerHTML = "Start calibration";
+                }
+
                 document.getElementById('calibrating-step').innerHTML = parseInt(data.calibrate_step) + "/5";
-                document.getElementById('calibrating-test').innerHTML = testGoal;
+                document.getElementById('calibrating-info').innerHTML = testGoal;
+
+                let testButton = document.getElementById("test-button");
+
+                if (data.testing === 1) {
+                    testButton.innerHTML = "Stop test";
+                } else {
+                    testButton.innerHTML = "Start test";
+                }
 
                 document.getElementById('rotation-count').innerHTML = data.rotation;
                 document.getElementById('pot-value').innerHTML = data.pot;
                 if (data.emergency) {
                     document.getElementById('emergency-status').innerHTML = "Emergency!";
                     document.getElementById('emergency-status').style.color = "red";
+                    document.getElementById('emergency-button').innerHTML = "Cancel";
                     speedSlider.value = 0;
                 } else {
                     document.getElementById('emergency-status').innerHTML = "Healthy!";
                     document.getElementById('emergency-status').style.color = "green";
+                    document.getElementById('emergency-button').innerHTML = "Emergency";
                 }
 
                 document.getElementById('min-duty').innerHTML = data.min_duty;
@@ -214,11 +231,11 @@
                 document.getElementById('ki').innerHTML = data.ki;
             };
 
-            websocket.onclose = (event) => {
+            websocket.onclose = () => {
                 let status = document.getElementById('status');
                 status.innerHTML = "Disconnected";
                 status.style.color = "red";
-                document.getElementById('rpm').innerHTML = 0.00;
+                document.getElementById('rpm').innerHTML = "0.00";
                 speedSlider.value = 0;
                 setTimeout(() => { window.location.reload(); }, 2000);
             };
@@ -251,21 +268,10 @@
         let calibrateButton = document.getElementById("calibrate-button");
         function toggleCalibration() {
             websocket.send("toggleCalibration");
-            if (calibrateButton.innerHTML === "Start calibration") {
-                calibrateButton.innerHTML = "Stop calibration";
-            } else {
-                calibrateButton.innerHTML = "Start calibration";
-            }
         }
 
-        let testButton = document.getElementById("test-button");
         function toggleTest() {
             websocket.send("toggleTest");
-            if (testButton.innerHTML === "Start test") {
-                testButton.innerHTML = "Stop test";
-            } else {
-                testButton.innerHTML = "Start test";
-            }
         }
         function toggleMotorMode() {
             websocket.send("toggleMode");
