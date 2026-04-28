@@ -211,6 +211,17 @@ void calibrate() {
                 Serial.println("Calibration finished.");
 
                 preferences.begin("motor-settings", false);
+
+                configTime(3600, 3600, "pool.ntp.org");
+                struct tm timeinfo;
+                if (!getLocalTime(&timeinfo)) {
+                    Serial.println("Time couldn't get requested.");
+                } else {
+                    time_t now;
+                    time(&now);
+                    preferences.putULong("last_calibration", (uint32_t)now);
+                }
+
                 preferences.putUShort("minDuty", minStartDuty);
                 preferences.putFloat("maxRPM", maxRPM);
                 preferences.putFloat("Kp", Kp);

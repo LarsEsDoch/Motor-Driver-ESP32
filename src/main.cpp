@@ -21,14 +21,23 @@ void setup() {
 
     preferences.begin("motor-settings", false);
 
+    time_t storedTime = (time_t)preferences.getULong("last_calibration", 0);
     minStartDuty = preferences.getUShort("minDuty", 0);
     maxRPM = preferences.getFloat("maxRPM", 2000.0f);
     Kp = preferences.getFloat("Kp", 0.8f);
     Ki = preferences.getFloat("Ki", 0.1f);
 
-    if (minStartDuty != 0) {
+    if (storedTime != 0) {
+        struct tm * timeinfo;
+        timeinfo = localtime(&storedTime);
+
+        char buffer[30];
+        strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeinfo);
+
         Serial.println("\nLoaded settings from flash:");
-        Serial.printf("Min Duty: %hu | Max RPM: %.2f | Kp: %.4f | Ki: %.4f\n\n", minStartDuty, maxRPM, Kp, Ki);
+        Serial.printf("Calibration Date: %s | Min Duty: %hu | Max RPM: %.2f | Kp: %.4f | Ki: %.4f\n\n", buffer, minStartDuty, maxRPM, Kp, Ki);
+    } else {
+        Serial.println("\nUsing default values.");
     }
 
     pinMode(STATUS_LED_PIN, OUTPUT);
