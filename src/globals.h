@@ -35,6 +35,7 @@ extern float Kp;
 extern float Ki;
 extern float integrator;
 extern float maxRPM;
+extern time_t lastCalibrationTime;
 
 extern float lastRPM;
 extern uint32_t lastCheckTime;

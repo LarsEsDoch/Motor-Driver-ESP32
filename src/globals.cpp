@@ -28,6 +28,7 @@ float Kp = 0.8f;
 float Ki = 0.1f;
 float integrator = 0;
 float maxRPM = 2000.0f;
+time_t lastCalibrationTime = 0;
 
 float lastRPM = 0;
 uint32_t lastCheckTime = 0;

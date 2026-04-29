@@ -85,6 +85,11 @@
         #emergency-button:active {
             background: #ff2c2c;
         }
+        #calibration-date-container {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #8f8f8f;
+        }
     </style>
 </head>
 <body>
@@ -94,6 +99,7 @@
             <h1>Calibrating Status</h1>
             <div id="calibrating-step">0/5</div>
             <p><span id="calibrating-info">No calibration in progress</span></p>
+            <p id="calibration-date-container"><span id="calibration-date">No calibration done</span></p>
         </div>
         <div class="card">
             <h1>Motor RPM</h1>
@@ -203,6 +209,15 @@
 
                 document.getElementById('calibrating-step').innerHTML = parseInt(data.calibrate_step) + "/5";
                 document.getElementById('calibrating-info').innerHTML = testGoal;
+
+                if (data.last_calibration_time == "No calibration done") {
+                    document.getElementById('calibration-date').innerHTML = data.last_calibration_time;
+                    document.getElementById('calibration-date').style.color = "#8f8f8f";
+                } else {
+                    document.getElementById('calibration-date').innerHTML = "Last: " + data.last_calibration_time;
+                    document.getElementById('calibration-date').style.color = "#8f8f8f";
+                }
+
 
                 let testButton = document.getElementById("test-button");
 

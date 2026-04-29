@@ -21,15 +21,15 @@ void setup() {
 
     preferences.begin("motor-settings", false);
 
-    time_t storedTime = (time_t)preferences.getULong("last_calibration", 0);
+    lastCalibrationTime = (time_t)preferences.getULong("last_calibration", 0);
     minStartDuty = preferences.getUShort("minDuty", 0);
     maxRPM = preferences.getFloat("maxRPM", 2000.0f);
     Kp = preferences.getFloat("Kp", 0.8f);
     Ki = preferences.getFloat("Ki", 0.1f);
 
-    if (storedTime != 0) {
+    if (lastCalibrationTime != 0) {
         struct tm * timeinfo;
-        timeinfo = localtime(&storedTime);
+        timeinfo = localtime(&lastCalibrationTime);
 
         char buffer[30];
         strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeinfo);
@@ -120,6 +120,18 @@ void loop() {
             movementState = 0;
         }
 
+        String calibrationStatus;
+
+        if (lastCalibrationTime == 0) {
+            calibrationStatus = "No calibration done";
+        } else {
+            struct tm * timeinfo;
+            timeinfo = localtime(&lastCalibrationTime);
+            char buffer[30];
+            strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeinfo);
+            calibrationStatus = String(buffer);
+        }
+
         String json = "{";
         json += "\"rpm\":" + String(displayRPM, 2) + ",";
         json += "\"trend\":" + String(movementState) + ",";
@@ -135,7 +147,8 @@ void loop() {
         json += "\"min_duty\":" + String(minStartDuty) + ",";
         json += "\"max_rpm\":" + String(maxRPM, 2) + ",";
         json += "\"kp\":" + String(Kp, 4) + ",";
-        json += "\"ki\":" + String(Ki, 4);
+        json += "\"ki\":" + String(Ki, 4) + ",";
+        json += "\"last_calibration_time\":\"" + calibrationStatus + "\"";
         json += "}";
 
         ws.textAll(json);
