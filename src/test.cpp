@@ -5,6 +5,8 @@
 #include "globals.h"
 
 void test() {
+    FastLED.setBrightness(0);
+    FastLED.show();
     Serial.println("Starting Frequency Sweep (200Hz - 10000Hz)...");
 
     for (int freq = 100; freq <= 20000; freq += 100) {
@@ -51,7 +53,7 @@ void test() {
     }
 
     leds[0] = CRGB::White;
-    FastLED.setBrightness(ledBrightness);
+    FastLED.setBrightness(0);
     FastLED.show();
 
     Serial.println("Finished test.");

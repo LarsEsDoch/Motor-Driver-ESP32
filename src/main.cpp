@@ -234,6 +234,8 @@ void loop() {
                 if (!calibrating) {
                     calibrating = true;
                     calibrateStep = 1;
+                    FastLED.setBrightness(0);
+                    FastLED.show();
                     Serial.println("Calibration started.");
                 } else {
                     calibrating = false;
@@ -248,6 +250,7 @@ void loop() {
 
     if (emergencyStop) {
         motorSpeed = 0;
+        targetRPM = 0;
         ledcWrite(motorChannel, 0);
 
         uint8_t pulse = beatsin8(40, 50, 255);
@@ -264,10 +267,13 @@ void loop() {
 
     if (calibrating) {
         calibrate();
+        delay(10);
+        return;
     }
 
     if (testing && !calibrating) {
         test();
+        delay(10);
         return;
     }
 
@@ -280,10 +286,41 @@ void loop() {
         }
     }
 
+    uint16_t referenceSpeed = (controlMode == 0) ? motorSpeed : (uint16_t)currentSpeed;
+
+    if (controlMode == 0) {
+        if (referenceSpeed < minStartDuty) {
+            ledBrightness = 0;
+        } else {
+            ledBrightness = map(referenceSpeed, minStartDuty, 4095, 0, 255);
+        }
+    } else {
+        ledBrightness = map(referenceSpeed, 0, 4095, 0, 255);
+
+        if (referenceSpeed == 0) ledBrightness = 0;
+    }
+
+    ledBrightness = constrain(ledBrightness, 0, 255);
     FastLED.setBrightness(ledBrightness);
-    uint8_t currentHue = map(motorSpeed, minStartDuty, 4095, 160, 0);
+
+    uint8_t currentHue = 0;
+    if (controlMode == 0) {
+        uint16_t constrainedSpeed = constrain(motorSpeed, minStartDuty, 4095);
+        currentHue = map(constrainedSpeed, minStartDuty, 4095, 160, 0);
+    } else {
+        uint32_t constrainedRPM = constrain(targetRPM, 0, maxRPM);
+        currentHue = map(constrainedRPM, 0, maxRPM, 160, 0);
+    }
+
     leds[0] = CHSV(currentHue, 255, 255);
     FastLED.show();
+
+    if (DebugLevel::VERBOSE <= currentDebugLevel) {
+        Serial.printf("Brightness: %u\n", ledBrightness);
+        Serial.printf("Motor Speed: %hu\n", motorSpeed);
+        Serial.printf("Speed: %hu\n", currentSpeed);
+        Serial.printf("Hue: %hu\n", currentHue);
+    }
 
     delay(10);
 }

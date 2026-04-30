@@ -45,6 +45,8 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                     if (message == "toggleCalibration") {
                         if (!calibrating) {
                             calibrating = true;
+                            FastLED.setBrightness(0);
+                            FastLED.show();
                             calibrateStep = 1;
                             Serial.println("Calibration started via web socket.");
                         } else {

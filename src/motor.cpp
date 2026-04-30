@@ -57,12 +57,10 @@ void adjustSpeed() {
 
         if (smoothedPot < (ADC_MIN + ADC_TOLERANCE)) {
             motorSpeed = 0;
-            ledBrightness = 0;
         } else {
             float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
             float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
             motorSpeed = static_cast<uint16_t>((percent * (4095.0f - minStartDuty)) + minStartDuty);
-            ledBrightness = static_cast<uint8_t>(percent * 255.0f);
         }
 
         ledcWrite(motorChannel, motorSpeed);
@@ -87,6 +85,7 @@ void controlRPM() {
     if (targetRPM < 100) {
         integrator = 0;
         currentSpeed = 0;
+        ledBrightness = 0;
         ledcWrite(motorChannel, 0);
         return;
     }
@@ -113,7 +112,8 @@ void controlRPM() {
     }
 
     currentSpeed = constrain(currentSpeed, 0, 4095);
-    ledcWrite(motorChannel, (uint16_t)currentSpeed);
+    ledcWrite(motorChannel, currentSpeed);
+    ledBrightness = map(currentSpeed, 0, 4095, 0, 255);
 
     if (DebugLevel::VERBOSE <= currentDebugLevel) {
         Serial.printf("PID Control: Target %.2f | Ist %.2f | PWM %hu\n", targetRPM, smoothedRPM, (uint16_t)currentSpeed);
