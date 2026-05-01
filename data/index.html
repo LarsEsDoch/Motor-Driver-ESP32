@@ -244,6 +244,16 @@
                 document.getElementById('max-rpm').innerHTML = data.max_rpm;
                 document.getElementById('kp').innerHTML = data.kp;
                 document.getElementById('ki').innerHTML = data.ki;
+
+                let isSliderActive = false;
+                speedSlider.addEventListener("mousedown",  () => isSliderActive = true);
+                speedSlider.addEventListener("touchstart", () => isSliderActive = true);
+                speedSlider.addEventListener("mouseup",    () => isSliderActive = false);
+                speedSlider.addEventListener("touchend",   () => isSliderActive = false);
+
+                if (!isSliderActive) {
+                    speedSlider.value = data.slider_value;
+                }
             };
 
             websocket.onclose = () => {

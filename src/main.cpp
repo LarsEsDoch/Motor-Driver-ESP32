@@ -136,6 +136,7 @@ void loop() {
         json += "\"rpm\":" + String(displayRPM, 2) + ",";
         json += "\"trend\":" + String(movementState) + ",";
         json += "\"pot\":" + String(smoothedPot) + ",";
+        json += "\"slider_value\":" + String(controlMode == 0 ? motorSpeed : (int)targetRPM) + ",";
         json += "\"rotation\":" + String(debugTickCount) + ",";
         json += "\"target_rpm\":" + String(targetRPM) + ",";
         json += "\"target_speed\":" + String(motorSpeed) + ",";
