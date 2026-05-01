@@ -36,6 +36,8 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
                         }
                         Serial.printf("Slider Speed changed over web server: %d\n", val);
                     }
+                    webUIControl = true;
+                    potAtWebUITakeover = smoothedPot;
                     if (strcmp(sliderType, "speedChange") == 0) {
                         playClick(3000, 20);
                     }

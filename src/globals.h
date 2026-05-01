@@ -56,3 +56,6 @@ extern uint32_t flashDurationUS;
 extern int controlMode;
 extern DebugLevel currentDebugLevel;
 extern volatile bool firstIntervalSeeded;
+
+extern bool webUIControl;
+extern float potAtWebUITakeover;

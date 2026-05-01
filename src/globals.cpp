@@ -49,3 +49,6 @@ uint32_t flashDurationUS = 100;
 int controlMode = 0;
 DebugLevel currentDebugLevel = DebugLevel::INFO;
 volatile bool firstIntervalSeeded = false;
+
+bool webUIControl = false;
+float potAtWebUITakeover = 0.0f;

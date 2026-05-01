@@ -51,6 +51,14 @@ void readPot() {
 }
 
 void adjustSpeed() {
+    if (webUIControl) {
+        if (abs(smoothedPot - potAtWebUITakeover) > ADC_TOLERANCE * 3) {
+            webUIControl = false;
+            lastTriggeredPot = smoothedPot;
+        } else {
+            return;
+        }
+    }
     if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
         lastTriggeredPot = smoothedPot;
         playClick(150, 10);
@@ -72,7 +80,14 @@ void adjustSpeed() {
 }
 
 void controlRPM() {
-    if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
+    if (webUIControl) {
+        if (abs(smoothedPot - potAtWebUITakeover) > 150) {
+            webUIControl = false;
+            lastTriggeredPot = smoothedPot;
+        }
+    }
+
+    if (!webUIControl && abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
         lastTriggeredPot = smoothedPot;
 
         float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);

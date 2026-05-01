@@ -21,6 +21,6 @@ const int resolutionMotor = 12;
 
 const float ADC_MIN = 50.0f;
 const float ADC_MAX = 4046.0f;
-const float ADC_TOLERANCE = 40.0f;
+const float ADC_TOLERANCE = 50.0f;
 
 const float INTEGRATOR_CLAMP = 500.0f;
