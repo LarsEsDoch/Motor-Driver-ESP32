@@ -233,7 +233,7 @@
                     document.getElementById('emergency-status').innerHTML = "Emergency!";
                     document.getElementById('emergency-status').style.color = "red";
                     document.getElementById('emergency-button').innerHTML = "Cancel";
-                    speedSlider.value = 0;
+                    sliderTarget = 0;
                 } else {
                     document.getElementById('emergency-status').innerHTML = "Healthy!";
                     document.getElementById('emergency-status').style.color = "green";
@@ -245,15 +245,7 @@
                 document.getElementById('kp').innerHTML = data.kp;
                 document.getElementById('ki').innerHTML = data.ki;
 
-                let isSliderActive = false;
-                speedSlider.addEventListener("mousedown",  () => isSliderActive = true);
-                speedSlider.addEventListener("touchstart", () => isSliderActive = true);
-                speedSlider.addEventListener("mouseup",    () => isSliderActive = false);
-                speedSlider.addEventListener("touchend",   () => isSliderActive = false);
-
-                if (!isSliderActive) {
-                    speedSlider.value = data.slider_value;
-                }
+                if (!isSliderActive) sliderTarget = data.slider_value;
             };
 
             websocket.onclose = () => {
@@ -271,6 +263,9 @@
 
         speedSlider.addEventListener("input", function() {
             let now = Date.now()
+
+            sliderCurrent = parseInt(speedSlider.value);
+            sliderTarget = sliderCurrent;
 
             if (now - lastSendTime >= throttleDelay) {
                 let data = {
@@ -304,6 +299,27 @@
         function toggleEmergency() {
             websocket.send("emergencyStop");
         }
+
+        let sliderTarget = 0;
+        let sliderCurrent = 0;
+        let isSliderActive = false;
+
+        speedSlider.addEventListener("mousedown",  () => isSliderActive = true);
+        speedSlider.addEventListener("touchstart", () => isSliderActive = true);
+        speedSlider.addEventListener("mouseup",    () => isSliderActive = false);
+        speedSlider.addEventListener("touchend",   () => isSliderActive = false);
+
+        function lerpSlider() {
+            if (!isSliderActive) {
+                const diff = sliderTarget - sliderCurrent;
+                if (Math.abs(diff) > 0.5) {
+                    sliderCurrent += diff * 0.06;
+                    speedSlider.value = Math.round(sliderCurrent);
+                }
+            }
+            requestAnimationFrame(lerpSlider);
+        }
+        requestAnimationFrame(lerpSlider);
     </script>
 </body>
 </html>
