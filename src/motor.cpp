@@ -5,8 +5,15 @@
 
 void playClick(const int freq, const int duration) {
     ledcWriteTone(speakerChannel, freq);
-    delay(duration);
-    ledcWriteTone(speakerChannel, 0);
+    speakerOffTime = millis() + duration;
+    speakerActive = true;
+}
+
+void updateSpeaker() {
+    if (speakerActive && millis() >= speakerOffTime) {
+        ledcWriteTone(speakerChannel, 0);
+        speakerActive = false;
+    }
 }
 
 void IRAM_ATTR pulseISR() {
@@ -59,6 +66,7 @@ void adjustSpeed() {
             return;
         }
     }
+
     if (abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
         lastTriggeredPot = smoothedPot;
         playClick(150, 10);

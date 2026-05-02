@@ -29,10 +29,8 @@ void setup() {
 
     if (lastCalibrationTime != 0) {
         const struct tm *timeInfo = localtime(&lastCalibrationTime);
-
         char buffer[30];
         strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeInfo);
-
         Serial.println("\nLoaded settings from flash:");
         Serial.printf("Calibration Date: %s | Min Duty: %hu | Max RPM: %.2f | Kp: %.4f | Ki: %.4f\n\n", buffer, minStartDuty, maxRPM, Kp, Ki);
     } else {
@@ -73,13 +71,14 @@ void setup() {
     });
 
     server.begin();
-
     Serial.println("HTTP server started");
 }
 
 void loop() {
+    updateSpeaker();
+
     if (triggerFlash) {
-        triggerFlash = true;
+        triggerFlash = false;
     }
 
     if (newPulseReceived) {
@@ -93,7 +92,6 @@ void loop() {
     }
 
     static uint32_t lastSeenTick = 0;
-
     if (debugTickCount != lastSeenTick && currentDebugLevel <= DebugLevel::INFO) {
         Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Target RPM: %.2f | Motor speed: %hu | Current speed: %.2hu | ADC Pot: %.2f \n",
             debugTickCount, currentRPM, smoothedRPM, targetRPM, motorSpeed, currentSpeed, smoothedPot);
@@ -112,7 +110,6 @@ void loop() {
         }
 
         int movementState = 1;
-
         if (displayRPM > (lastRPMDisplay + tolerance)) {
             movementState = 2;
         } else if (displayRPM < (lastRPMDisplay - tolerance)) {
@@ -120,12 +117,10 @@ void loop() {
         }
 
         String calibrationStatus;
-
         if (lastCalibrationTime == 0) {
             calibrationStatus = "No calibration done";
         } else {
-            tm * timeInfo;
-            timeInfo = localtime(&lastCalibrationTime);
+            tm *timeInfo = localtime(&lastCalibrationTime);
             char buffer[30];
             strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeInfo);
             calibrationStatus = String(buffer);
@@ -156,14 +151,18 @@ void loop() {
         lastRPMDisplay = smoothedRPM;
     }
 
-    if (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW) {
+    static bool emergencyBtnWasPressed = false;
+    const bool emergencyBtnPressed = (digitalRead(EMERGENCY_STOP_BUTTON_PIN) == LOW);
+    if (emergencyBtnPressed && !emergencyBtnWasPressed) {
         emergencyStop = !emergencyStop;
         testing = false;
         calibrating = false;
         calibrateStep = 0;
+        testPhase = 0;
         ledcWriteTone(speakerChannel, 0);
-        delay(300);
+        speakerActive = false;
     }
+    emergencyBtnWasPressed = emergencyBtnPressed;
 
     static uint32_t modeButtonPressStartTime = 0;
     static uint32_t totalPressStartTime = 0;
@@ -199,17 +198,13 @@ void loop() {
     } else {
         if (modeButtonWasPressed) {
             unsigned long totalDuration = millis() - totalPressStartTime;
-
-            if (!modeActionExecuted) {
-                if (totalDuration < 3000 && totalDuration > 50) {
-                    controlMode = (controlMode == 0) ? 1 : 0;
-                    motorSpeed = 0;
-                    targetRPM = 0;
-                    Serial.printf("Control mode set to %s\n", controlMode == 1 ? "rpm" : "voltage");
-                    playClick(2000, 100);
-                }
+            if (!modeActionExecuted && totalDuration < 3000 && totalDuration > 50) {
+                controlMode = (controlMode == 0) ? 1 : 0;
+                motorSpeed = 0;
+                targetRPM = 0;
+                Serial.printf("Control mode set to %s\n", controlMode == 1 ? "rpm" : "voltage");
+                playClick(2000, 100);
             }
-
             modeButtonWasPressed = false;
             modeActionExecuted = false;
         }
@@ -225,6 +220,7 @@ void loop() {
         } else {
             if (millis() - calibrateButtonPressStartTime >= 3000) {
                 testing = !testing;
+                testPhase = 0;
                 playClick(2000, 100);
                 calibrateButtonWasPressed = false;
                 Serial.printf("Test mode %s\n", testing ? "activated" : "deactivated");
@@ -262,44 +258,32 @@ void loop() {
 
         uint16_t sirenFreq = beatsin16(40, 600, 1200);
         ledcWriteTone(speakerChannel, sirenFreq);
-
-        delay(10);
         return;
     }
 
     if (calibrating) {
         calibrate();
-        delay(10);
         return;
     }
 
     if (testing && !calibrating) {
         test();
-        delay(10);
         return;
     }
 
     readPot();
-    if (!calibrating) {
-        if (controlMode == 0) {
-            adjustSpeed();
-        } else if (controlMode == 1) {
-            controlRPM();
-        }
+    if (controlMode == 0) {
+        adjustSpeed();
+    } else if (controlMode == 1) {
+        controlRPM();
     }
 
-    uint16_t referenceSpeed = (controlMode == 0) ? motorSpeed : (uint16_t)currentSpeed;
+    uint16_t referenceSpeed = (controlMode == 0) ? motorSpeed : static_cast<uint16_t>(currentSpeed);
 
     if (controlMode == 0) {
-        if (referenceSpeed < minStartDuty) {
-            ledBrightness = 0;
-        } else {
-            ledBrightness = map(referenceSpeed, minStartDuty, 4095, 0, 255);
-        }
+        ledBrightness = (referenceSpeed < minStartDuty) ? 0 : static_cast<uint8_t>(map(referenceSpeed, minStartDuty, 4095, 0, 255));
     } else {
-        ledBrightness = map(referenceSpeed, 0, 4095, 0, 255);
-
-        if (referenceSpeed == 0) ledBrightness = 0;
+        ledBrightness = (referenceSpeed == 0) ? 0 : static_cast<uint8_t>(map(referenceSpeed, 0, 4095, 0, 255));
     }
 
     ledBrightness = constrain(ledBrightness, 0, 255);
@@ -308,10 +292,10 @@ void loop() {
     uint8_t currentHue = 0;
     if (controlMode == 0) {
         uint16_t constrainedSpeed = constrain(motorSpeed, minStartDuty, 4095);
-        currentHue = map(constrainedSpeed, minStartDuty, 4095, 160, 0);
+        currentHue = static_cast<uint8_t>(map(constrainedSpeed, minStartDuty, 4095, 160, 0));
     } else {
         uint32_t constrainedRPM = constrain(targetRPM, 0, maxRPM);
-        currentHue = map(static_cast<long>(constrainedRPM), 0, static_cast<long>(maxRPM), 160, 0);
+        currentHue = static_cast<uint8_t>(map(static_cast<long>(constrainedRPM), 0, static_cast<long>(maxRPM), 160, 0));
     }
 
     leds[0] = CHSV(currentHue, 255, 255);
@@ -323,6 +307,4 @@ void loop() {
         Serial.printf("Speed: %hu\n", currentSpeed);
         Serial.printf("Hue: %hu\n", currentHue);
     }
-
-    delay(10);
 }

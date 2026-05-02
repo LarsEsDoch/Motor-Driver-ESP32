@@ -61,4 +61,7 @@ extern volatile bool firstIntervalSeeded;
 extern bool webUIControl;
 extern float potAtWebUITakeover;
 
+extern bool speakerActive;
+extern uint32_t speakerOffTime;
+
 extern int testPhase;
