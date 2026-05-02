@@ -49,6 +49,7 @@ extern float lastTriggeredPot;
 extern bool emergencyStop;
 extern bool calibrating;
 extern int calibrateStep;
+extern uint8_t zeroCount;
 extern bool testing;
 
 extern uint8_t ledBrightness;

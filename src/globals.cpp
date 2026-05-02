@@ -42,6 +42,7 @@ float lastTriggeredPot = 0;
 bool emergencyStop = false;
 bool calibrating = false;
 int calibrateStep = 0;
+uint8_t zeroCount = 0;
 bool testing = false;
 
 uint8_t ledBrightness = 0;

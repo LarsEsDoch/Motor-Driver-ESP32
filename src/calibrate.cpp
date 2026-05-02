@@ -7,6 +7,33 @@
 void calibrate() {
     switch (calibrateStep) {
         case 1: {
+            static uint32_t lastCheck = 0;
+            const uint32_t now = millis();
+
+            ledcWrite(motorChannel, 0);
+
+            if (smoothedRPM < 1.0f) {
+                if (now - lastCheck >= 500) {
+                    lastCheck = now;
+                    zeroCount++;
+
+                    if (DebugLevel::DEBUG <= currentDebugLevel) {
+                        Serial.printf("Waiting for standstill... Count: %u/5\n", zeroCount);
+                    }
+
+                    if (zeroCount >= 5) {
+                        zeroCount = 0;
+                        calibrateStep = 2;
+                        Serial.println("Motor at standstill. Starting Step 1...");
+                    }
+                }
+            } else {
+                lastCheck = now;
+                zeroCount = 0;
+            }
+            break;
+        }
+        case 2: {
             static uint32_t lastStepTime = 0;
             static uint16_t testDuty = 500;
 
@@ -32,7 +59,7 @@ void calibrate() {
                         playClick(1000, 100);
 
                         startCount = 0;
-                        calibrateStep = 2;
+                        calibrateStep = 3;
                     }
                 }
             }
@@ -46,16 +73,16 @@ void calibrate() {
             break;
         }
 
-        case 2: {
+        case 3: {
             ledcWrite(motorChannel, 4095);
 
             if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                Serial.println("calibrate case 2 ledc 4095");
+                Serial.println("calibrate case 3 ledc 4095");
             }
 
-            const uint32_t now = millis();
-            if (now - lastCheckTime >= 200) {
-                const float deltaTime = (now - lastCheckTime) / 1000.0f;
+            const uint32_t now2 = millis();
+            if (now2 - lastCheckTime >= 200) {
+                const float deltaTime = (now2 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
                 static uint8_t stableCount = 0;
@@ -73,7 +100,7 @@ void calibrate() {
                         Serial.printf("Max RPM confirmed: %.2f\n", maxRPM);
                         playClick(1250, 200);
                         tuneTimer = millis();
-                        calibrateStep = 3;
+                        calibrateStep = 4;
                     }
                 } else {
                     if (stableCount > 0 && DebugLevel::DEBUG <= currentDebugLevel) {
@@ -83,21 +110,21 @@ void calibrate() {
                 }
 
                 lastRPM = smoothedRPM;
-                lastCheckTime = now;
+                lastCheckTime = now2;
             }
             break;
         }
 
-        case 3: {
+        case 4: {
             ledcWrite(motorChannel, 2048);
 
             if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                Serial.println("calibrate case 3 ledc 2048");
+                Serial.println("calibrate case 4 ledc 2048");
             }
 
-            uint32_t now3 = millis();
+            const uint32_t now3 = millis();
             if (now3 - lastCheckTime >= 200) {
-                float deltaTime = (now3 - lastCheckTime) / 1000.0f;
+                const float deltaTime = (now3 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
                 static uint8_t stableCount50 = 0;
@@ -119,12 +146,12 @@ void calibrate() {
                         ledcWrite(motorChannel, 3276);
 
                         if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                            Serial.println("calibrate case 3 ledc 3276");
+                            Serial.println("calibrate case 4 ledc 3276");
                         }
 
                         tuneTimer = millis();
                         lastCheckTime = millis();
-                        calibrateStep = 4;
+                        calibrateStep = 5;
                     }
                 } else {
                     if (stableCount50 > 0 && DebugLevel::DEBUG <= currentDebugLevel) {
@@ -139,16 +166,16 @@ void calibrate() {
             break;
         }
 
-        case 4: {
+        case 5: {
             ledcWrite(motorChannel, 3276);
 
             if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                Serial.println("calibrate case 4 ledc 3276");
+                Serial.println("calibrate case 5 ledc 3276");
             }
 
-            uint32_t now4 = millis();
+            const uint32_t now4 = millis();
             if (now4 - lastCheckTime >= 200) {
-                float deltaTime = (now4 - lastCheckTime) / 1000.0f;
+                const float deltaTime = (now4 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
                 static uint8_t stableCount80 = 0;
@@ -162,12 +189,12 @@ void calibrate() {
 
                     if (stableCount80 >= 10) {
                         rpmAt80 = smoothedRPM;
-                        float deltaRPM = rpmAt80 - rpmAt50;
-                        float deltaPWM = 3276.0f - 2048.0f;
+                        const float deltaRPM = rpmAt80 - rpmAt50;
+                        const float deltaPWM = 3276.0f - 2048.0f;
 
                         systemGain = deltaRPM / deltaPWM;
 
-                        float timeToStabilize = (now4 - tuneTimer) / 1000.0f;
+                        const float timeToStabilize = (now4 - tuneTimer) / 1000.0f;
                         timeConstant = timeToStabilize / 3.0f;
 
                         Serial.printf("RPM at 80%%: %.2f\n", rpmAt80);
@@ -185,7 +212,7 @@ void calibrate() {
 
                         ledcWrite(motorChannel, 0);
                         stableCount80 = 0;
-                        calibrateStep = 5;
+                        calibrateStep = 6;
                     }
                 } else {
                     if (stableCount80 > 0 && DebugLevel::DEBUG <= currentDebugLevel) {
@@ -208,7 +235,7 @@ void calibrate() {
     const bool calibBtnPressed = (digitalRead(CALIBRATE_BUTTON_PIN) == LOW);
 
     if (calibBtnPressed && !calibBtnWasPressed) {
-        if (calibrateStep == 5) {
+        if (calibrateStep == 6) {
             Serial.println("Calibration finished.");
             Serial.printf("Determined values: Min duty: %hu | Max RPM: %f | 50%% RPM: %f | 80%% RPM: %f | Gain: %f | Tau: %f | Kp: %f | Ki: %f\n",
                 minStartDuty, maxRPM, rpmAt50, rpmAt80, systemGain, timeConstant, Kp, Ki);

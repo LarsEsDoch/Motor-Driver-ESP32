@@ -97,7 +97,7 @@
     <div class="dashboard-container">
         <div class="card">
             <h1>Calibrating Status</h1>
-            <div id="calibrating-step">0/5</div>
+            <div id="calibrating-step">0/6</div>
             <p><span id="calibrating-info">No calibration in progress</span></p>
             <p id="calibration-date-container"><span id="calibration-date">No calibration done</span></p>
         </div>
@@ -185,18 +185,21 @@
                         testGoal = "No calibration in progress";
                         break;
                     case 1:
+                        testGoal = "Waiting to stop spinning";
+                        break
+                    case 2:
                         testGoal = "Minimum motor duty";
                         break;
-                    case 2:
+                    case 3:
                         testGoal = "Maximum motor speed";
                         break;
-                    case 3:
+                    case 4:
                         testGoal = "50% motor speed";
                         break;
-                    case 4:
+                    case 5:
                         testGoal = "80% motor speed";
                         break;
-                    case 5:
+                    case 6:
                         testGoal = "Waiting for confirmation to finish";
                         break;
                 }
@@ -207,7 +210,7 @@
                     calibrateButton.innerHTML = "Start calibration";
                 }
 
-                document.getElementById('calibrating-step').innerHTML = parseInt(data.calibrate_step) + "/5";
+                document.getElementById('calibrating-step').innerHTML = parseInt(data.calibrate_step) + "/6";
                 document.getElementById('calibrating-info').innerHTML = testGoal;
 
                 if (data.last_calibration_time == "No calibration done") {

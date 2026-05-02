@@ -49,6 +49,7 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                             calibrating = true;
                             FastLED.setBrightness(0);
                             FastLED.show();
+                            zeroCount = 0;
                             calibrateStep = 1;
                             Serial.println("Calibration started via web socket.");
                         } else {

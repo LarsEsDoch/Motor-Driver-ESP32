@@ -231,6 +231,7 @@ void loop() {
             if (millis() - calibrateButtonPressStartTime < 3000) {
                 if (!calibrating) {
                     calibrating = true;
+                    zeroCount = 0;
                     calibrateStep = 1;
                     FastLED.setBrightness(0);
                     FastLED.show();
