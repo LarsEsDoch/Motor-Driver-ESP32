@@ -246,6 +246,8 @@ void loop() {
         }
     }
 
+    static bool lastEmergencyState = false;
+
     if (emergencyStop) {
         motorSpeed = 0;
         targetRPM = 0;
@@ -258,7 +260,15 @@ void loop() {
 
         uint16_t sirenFreq = beatsin16(40, 600, 1200);
         ledcWriteTone(speakerChannel, sirenFreq);
+        lastEmergencyState = true;
         return;
+    }
+
+    if (lastEmergencyState) {
+        ledcWriteTone(speakerChannel, 0);
+        speakerActive = false;
+        lastEmergencyState = false;
+        Serial.println("Emergency sound cleared safely.");
     }
 
     if (calibrating) {
