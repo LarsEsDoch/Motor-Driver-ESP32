@@ -27,6 +27,7 @@ extern float displayRPM;
 
 extern uint32_t tuneTimer;
 extern float rpmAt50;
+extern float rpmAt80;
 extern float systemGain;
 extern float timeConstant;
 

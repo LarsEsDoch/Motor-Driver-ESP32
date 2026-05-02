@@ -162,7 +162,7 @@ void calibrate() {
                     }
 
                     if (stableCount80 >= 10) {
-                        float rpmAt80 = smoothedRPM;
+                        rpmAt80 = smoothedRPM;
                         float deltaRPM = rpmAt80 - rpmAt50;
                         float deltaPWM = 3276.0f - 2048.0f;
 
@@ -209,6 +209,7 @@ void calibrate() {
         switch (calibrateStep) {
             case 5:
                 Serial.println("Calibration finished.");
+                Serial.printf("Determined values: Minimum start duty: %hu | Max RPM: %f | 50%% PWM RPM: %f | 80%% PWM RPM: %f | System Gain: %f | Time Constant: %f | Kp: %f | Ki: %f", minStartDuty, maxRPM, rpmAt50, rpmAt80, systemGain, timeConstant, Kp, Ki);
 
                 preferences.begin("motor-settings", false);
 

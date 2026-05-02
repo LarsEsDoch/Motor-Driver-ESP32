@@ -20,6 +20,7 @@ float displayRPM = 0;
 
 uint32_t tuneTimer = 0;
 float rpmAt50 = 0;
+float rpmAt80 = 0;
 float systemGain = 0;
 float timeConstant = 0;
 
