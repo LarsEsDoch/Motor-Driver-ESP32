@@ -10,7 +10,7 @@ void calibrate() {
             static uint32_t lastStepTime = 0;
             static uint16_t testDuty = 500;
 
-            uint32_t now = millis();
+            const uint32_t now = millis();
 
             if (now - lastStepTime >= 300) {
                 lastStepTime = now;
@@ -45,6 +45,7 @@ void calibrate() {
             }
             break;
         }
+
         case 2: {
             ledcWrite(motorChannel, 4095);
 
@@ -52,9 +53,9 @@ void calibrate() {
                 Serial.println("calibrate case 2 ledc 4095");
             }
 
-            uint32_t now = millis();
+            const uint32_t now = millis();
             if (now - lastCheckTime >= 200) {
-                float deltaTime = (now - lastCheckTime) / 1000.0f;
+                const float deltaTime = (now - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
                 static uint8_t stableCount = 0;
@@ -75,10 +76,8 @@ void calibrate() {
                         calibrateStep = 3;
                     }
                 } else {
-                    if (stableCount > 0) {
-                        if (DebugLevel::DEBUG <= currentDebugLevel) {
-                            Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount, acceleration);
-                        }
+                    if (stableCount > 0 && DebugLevel::DEBUG <= currentDebugLevel) {
+                        Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount, acceleration);
                     }
                     stableCount = 0;
                 }
@@ -88,11 +87,12 @@ void calibrate() {
             }
             break;
         }
+
         case 3: {
             ledcWrite(motorChannel, 2048);
 
             if (DebugLevel::VERBOSE <= currentDebugLevel) {
-                Serial.println("calibrate case e ledc 2048");
+                Serial.println("calibrate case 3 ledc 2048");
             }
 
             uint32_t now3 = millis();
@@ -127,10 +127,8 @@ void calibrate() {
                         calibrateStep = 4;
                     }
                 } else {
-                    if (stableCount50 > 0) {
-                        if (DebugLevel::DEBUG <= currentDebugLevel) {
-                            Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount50, acceleration);
-                        }
+                    if (stableCount50 > 0 && DebugLevel::DEBUG <= currentDebugLevel) {
+                        Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount50, acceleration);
                     }
                     stableCount50 = 0;
                 }
@@ -140,6 +138,7 @@ void calibrate() {
             }
             break;
         }
+
         case 4: {
             ledcWrite(motorChannel, 3276);
 
@@ -185,13 +184,12 @@ void calibrate() {
                         playClick(1750, 400);
 
                         ledcWrite(motorChannel, 0);
+                        stableCount80 = 0;
                         calibrateStep = 5;
                     }
                 } else {
-                    if (stableCount80 > 0) {
-                        if (DebugLevel::DEBUG <= currentDebugLevel) {
-                            Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount80, acceleration);
-                        }
+                    if (stableCount80 > 0 && DebugLevel::DEBUG <= currentDebugLevel) {
+                        Serial.printf("Stability broken at count %u | Accel: %.2f — resetting\n", stableCount80, acceleration);
                     }
                     stableCount80 = 0;
                 }
@@ -201,42 +199,44 @@ void calibrate() {
             }
             break;
         }
+
         default:
             break;
     }
 
-    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW) {
-        switch (calibrateStep) {
-            case 5:
-                Serial.println("Calibration finished.");
-                Serial.printf("Determined values: Minimum start duty: %hu | Max RPM: %f | 50%% PWM RPM: %f | 80%% PWM RPM: %f | System Gain: %f | Time Constant: %f | Kp: %f | Ki: %f", minStartDuty, maxRPM, rpmAt50, rpmAt80, systemGain, timeConstant, Kp, Ki);
+    static bool calibBtnWasPressed = false;
+    const bool calibBtnPressed = (digitalRead(CALIBRATE_BUTTON_PIN) == LOW);
 
-                preferences.begin("motor-settings", false);
+    if (calibBtnPressed && !calibBtnWasPressed) {
+        if (calibrateStep == 5) {
+            Serial.println("Calibration finished.");
+            Serial.printf("Determined values: Min duty: %hu | Max RPM: %f | 50%% RPM: %f | 80%% RPM: %f | Gain: %f | Tau: %f | Kp: %f | Ki: %f\n",
+                minStartDuty, maxRPM, rpmAt50, rpmAt80, systemGain, timeConstant, Kp, Ki);
 
-                configTime(3600, 3600, "pool.ntp.org");
-                struct tm timeinfo;
-                if (!getLocalTime(&timeinfo)) {
-                    Serial.println("Time couldn't get requested.");
-                } else {
-                    time_t now;
-                    time(&now);
-                    preferences.putULong("last_calibration", static_cast<uint32_t>(now));
-                }
+            preferences.begin("motor-settings", false);
 
-                preferences.putUShort("minDuty", minStartDuty);
-                preferences.putFloat("maxRPM", maxRPM);
-                preferences.putFloat("Kp", Kp);
-                preferences.putFloat("Ki", Ki);
-                preferences.end();
+            configTime(3600, 3600, "pool.ntp.org");
+            tm timeInfo;
+            if (!getLocalTime(&timeInfo)) {
+                Serial.println("Time couldn't get requested.");
+            } else {
+                time_t now;
+                time(&now);
+                preferences.putULong("last_calibration", static_cast<uint32_t>(now));
+            }
 
-                Serial.println("Saved settings to flash storage.");
-                playClick(2000, 500);
-                calibrating = false;
-                calibrateStep = 0;
-                break;
-            default:
-                break;
+            preferences.putUShort("minDuty", minStartDuty);
+            preferences.putFloat("maxRPM", maxRPM);
+            preferences.putFloat("Kp", Kp);
+            preferences.putFloat("Ki", Ki);
+            preferences.end();
+
+            Serial.println("Saved settings to flash storage.");
+            playClick(2000, 500);
+            calibrating = false;
+            calibrateStep = 0;
         }
-        delay(300);
     }
+
+    calibBtnWasPressed = calibBtnPressed;
 }
