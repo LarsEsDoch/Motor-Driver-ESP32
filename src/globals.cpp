@@ -53,3 +53,5 @@ volatile bool firstIntervalSeeded = false;
 
 bool webUIControl = false;
 float potAtWebUITakeover = 0.0f;
+
+int testPhase = 0;

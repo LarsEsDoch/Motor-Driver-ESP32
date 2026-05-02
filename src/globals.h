@@ -60,3 +60,5 @@ extern volatile bool firstIntervalSeeded;
 
 extern bool webUIControl;
 extern float potAtWebUITakeover;
+
+extern int testPhase;
