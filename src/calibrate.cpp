@@ -220,7 +220,7 @@ void calibrate() {
                 } else {
                     time_t now;
                     time(&now);
-                    preferences.putULong("last_calibration", (uint32_t)now);
+                    preferences.putULong("last_calibration", static_cast<uint32_t>(now));
                 }
 
                 preferences.putUShort("minDuty", minStartDuty);

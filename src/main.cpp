@@ -21,18 +21,17 @@ void setup() {
 
     preferences.begin("motor-settings", false);
 
-    lastCalibrationTime = (time_t)preferences.getULong("last_calibration", 0);
+    lastCalibrationTime = static_cast<time_t>(preferences.getULong("last_calibration", 0));
     minStartDuty = preferences.getUShort("minDuty", 0);
     maxRPM = preferences.getFloat("maxRPM", 2000.0f);
     Kp = preferences.getFloat("Kp", 0.8f);
     Ki = preferences.getFloat("Ki", 0.1f);
 
     if (lastCalibrationTime != 0) {
-        struct tm * timeinfo;
-        timeinfo = localtime(&lastCalibrationTime);
+        const struct tm *timeInfo = localtime(&lastCalibrationTime);
 
         char buffer[30];
-        strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeinfo);
+        strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeInfo);
 
         Serial.println("\nLoaded settings from flash:");
         Serial.printf("Calibration Date: %s | Min Duty: %hu | Max RPM: %.2f | Kp: %.4f | Ki: %.4f\n\n", buffer, minStartDuty, maxRPM, Kp, Ki);
@@ -84,7 +83,7 @@ void loop() {
     }
 
     if (newPulseReceived) {
-        currentRPM = 60000000.0f / latestDuration;
+        currentRPM = 60000000.0f / static_cast<float>(latestDuration);
         newPulseReceived = false;
         smoothedRPM = (smoothedRPM * 0.8f) + (currentRPM * 0.2f);
     }
@@ -104,7 +103,7 @@ void loop() {
     static uint32_t lastUpload = 0;
     if (millis() - lastUpload > 200) {
         static float lastRPMDisplay = 0;
-        const float tolerance = 200.0f;
+        constexpr float tolerance = 200.0f;
 
         if (micros() - lastPulseMicros > 2000000) {
             displayRPM = (displayRPM * 0.5f) + (currentRPM * 0.5f);
@@ -125,10 +124,10 @@ void loop() {
         if (lastCalibrationTime == 0) {
             calibrationStatus = "No calibration done";
         } else {
-            struct tm * timeinfo;
-            timeinfo = localtime(&lastCalibrationTime);
+            tm * timeInfo;
+            timeInfo = localtime(&lastCalibrationTime);
             char buffer[30];
-            strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeinfo);
+            strftime(buffer, sizeof(buffer), "%d.%m.%Y %H:%M:%S", timeInfo);
             calibrationStatus = String(buffer);
         }
 
@@ -149,7 +148,7 @@ void loop() {
         json += "\"max_rpm\":" + String(maxRPM, 2) + ",";
         json += "\"kp\":" + String(Kp, 4) + ",";
         json += "\"ki\":" + String(Ki, 4) + ",";
-        json += "\"last_calibration_time\":\"" + calibrationStatus + "\"";
+        json += R"("last_calibration_time":")" + calibrationStatus + R"(")";
         json += "}";
 
         ws.textAll(json);
@@ -201,12 +200,14 @@ void loop() {
         if (modeButtonWasPressed) {
             unsigned long totalDuration = millis() - totalPressStartTime;
 
-            if (!modeActionExecuted && totalDuration < 3000 && totalDuration > 50) {
-                controlMode = (controlMode == 0) ? 1 : 0;
-                motorSpeed = 0;
-                targetRPM = 0;
-                Serial.printf("Control mode set to %s\n", controlMode == 1 ? "rpm" : "voltage");
-                playClick(2000, 100);
+            if (!modeActionExecuted) {
+                if (totalDuration < 3000 && totalDuration > 50) {
+                    controlMode = (controlMode == 0) ? 1 : 0;
+                    motorSpeed = 0;
+                    targetRPM = 0;
+                    Serial.printf("Control mode set to %s\n", controlMode == 1 ? "rpm" : "voltage");
+                    playClick(2000, 100);
+                }
             }
 
             modeButtonWasPressed = false;
@@ -310,7 +311,7 @@ void loop() {
         currentHue = map(constrainedSpeed, minStartDuty, 4095, 160, 0);
     } else {
         uint32_t constrainedRPM = constrain(targetRPM, 0, maxRPM);
-        currentHue = map(constrainedRPM, 0, maxRPM, 160, 0);
+        currentHue = map(static_cast<long>(constrainedRPM), 0, static_cast<long>(maxRPM), 160, 0);
     }
 
     leds[0] = CHSV(currentHue, 255, 255);

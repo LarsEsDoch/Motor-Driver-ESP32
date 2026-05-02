@@ -6,7 +6,7 @@
 #include "globals.h"
 #include "motor.h"
 
-void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
+void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const AwsEventType type, void *arg, uint8_t *data, size_t len) {
     switch (type) {
         case WS_EVT_CONNECT:
             Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
@@ -15,17 +15,17 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
             Serial.printf("WebSocket client #%u disconnected\n", client->id());
             break;
         case WS_EVT_DATA: {
-            AwsFrameInfo *info = (AwsFrameInfo*)arg;
+            const AwsFrameInfo *info = static_cast<AwsFrameInfo *>(arg);
             if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
                 data[len] = 0;
-                String message = (char*)data;
+                String message = reinterpret_cast<char *>(data);
 
                 JsonDocument doc;
-                DeserializationError error = deserializeJson(doc, message);
+                const DeserializationError error = deserializeJson(doc, message);
 
                 if (!error) {
                     const char* sliderType = doc["type"];
-                    int val = doc["value"];
+                    const int val = doc["value"];
 
                     if (strcmp(sliderType, "speed") == 0 || strcmp(sliderType, "speedChange") == 0) {
                         if (controlMode == 0) {
@@ -87,6 +87,8 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
         }
         case WS_EVT_PONG:
         case WS_EVT_ERROR:
+            break;
+        default:
             break;
     }
 }

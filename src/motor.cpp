@@ -3,21 +3,21 @@
 #include "config.h"
 #include "globals.h"
 
-void playClick(int freq, int duration) {
+void playClick(const int freq, const int duration) {
     ledcWriteTone(speakerChannel, freq);
     delay(duration);
     ledcWriteTone(speakerChannel, 0);
 }
 
 void IRAM_ATTR pulseISR() {
-    uint32_t now = micros();
+    const uint32_t now = micros();
 
     if (lastPulseMicros == 0) {
         lastPulseMicros = now;
         return;
     }
 
-    uint32_t duration = now - lastPulseMicros;
+    const uint32_t duration = now - lastPulseMicros;
 
     if (duration > 1000000) {
         lastPulseMicros = now;
@@ -46,7 +46,7 @@ void IRAM_ATTR pulseISR() {
 }
 
 void readPot() {
-    int raw = analogRead(POT_PIN);
+    const int raw = analogRead(POT_PIN);
     smoothedPot = (smoothedPot * 0.9f) + (static_cast<float>(raw) * 0.1f);
 }
 
@@ -131,6 +131,6 @@ void controlRPM() {
     ledBrightness = map(currentSpeed, 0, 4095, 0, 255);
 
     if (DebugLevel::VERBOSE <= currentDebugLevel) {
-        Serial.printf("PID Control: Target %.2f | Ist %.2f | PWM %hu\n", targetRPM, smoothedRPM, (uint16_t)currentSpeed);
+        Serial.printf("PID Control: Target %.2f | Ist %.2f | PWM %hu\n", targetRPM, smoothedRPM, static_cast<uint16_t>(currentSpeed));
     }
 }
