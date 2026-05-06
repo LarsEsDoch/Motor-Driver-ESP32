@@ -117,6 +117,8 @@ The photo-reflective sensor has its LED anode driven through a 470 Ω resistor f
 
 #### Motor + Sensor Assembly
 
+This prototype uses a simple paper mount to align the motor and sensor. It serves as a functional baseline, though a more rigid setup (e.g., a 3D-printed bracket) would enhance stability. Note that the photo-reflective sensor module is fully independent and can be repurposed for other RPM measurement tasks.
+
 ![Motor and Sensor Module](images/motor_and_sensor_module.jpg)
 
 > **Safety note:** The motor's external supply GND must be shared with the ESP32 GND. Keep motor power traces away from sensitive analog lines. The flyback diode is mandatory.
@@ -278,4 +280,4 @@ A GitHub Actions workflow (`.github/workflows/main.yml`) runs on every push and 
 
 ## License
 
-This project is released under the [MIT License](LICENSE).
+This project is released under the [GNU GPL](LICENSE).
