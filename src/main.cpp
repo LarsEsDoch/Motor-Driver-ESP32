@@ -89,6 +89,7 @@ void loop() {
 
     if (micros() - lastPulseMicros > 1000000) {
         currentRPM = 0;
+        smoothedRPM = 0;
     }
 
     static uint32_t lastSeenTick = 0;
@@ -212,23 +213,28 @@ void loop() {
 
     static uint32_t calibrateButtonPressStartTime = 0;
     static bool calibrateButtonWasPressed = false;
+    static bool calibrateLongActionExecuted = false;
 
-    if (digitalRead(CALIBRATE_BUTTON_PIN) == LOW && !calibrating) {
+    const bool calibBtnDown = (digitalRead(CALIBRATE_BUTTON_PIN) == LOW);
+
+    if (calibBtnDown) {
         if (!calibrateButtonWasPressed) {
             calibrateButtonPressStartTime = millis();
             calibrateButtonWasPressed = true;
-        } else {
-            if (millis() - calibrateButtonPressStartTime >= 3000) {
-                testing = !testing;
-                testPhase = 0;
-                playClick(2000, 100);
-                calibrateButtonWasPressed = false;
-                Serial.printf("Test mode %s\n", testing ? "activated" : "deactivated");
-            }
+            calibrateLongActionExecuted = false;
+        } else if (!calibrateLongActionExecuted && millis() - calibrateButtonPressStartTime >= 3000) {
+            testing = !testing;
+            targetRPM = 0;
+            motorSpeed = 0;
+            ledcWrite(motorChannel, 0);
+            testPhase = 0;
+            playClick(2000, 100);
+            calibrateLongActionExecuted = true;
+            Serial.printf("Test mode %s\n", testing ? "activated" : "deactivated");
         }
     } else {
         if (calibrateButtonWasPressed) {
-            if (millis() - calibrateButtonPressStartTime < 3000) {
+            if (!calibrateLongActionExecuted && millis() - calibrateButtonPressStartTime < 3000) {
                 if (!calibrating) {
                     calibrating = true;
                     zeroCount = 0;
@@ -239,11 +245,13 @@ void loop() {
                 } else {
                     calibrating = false;
                     calibrateStep = 0;
+                    ledcWrite(motorChannel, 0);
                     Serial.println("Calibration cancelled. Returned to old values.");
                 }
                 playClick(2000, 100);
             }
             calibrateButtonWasPressed = false;
+            calibrateLongActionExecuted = false;
         }
     }
 
@@ -269,7 +277,6 @@ void loop() {
         ledcWriteTone(speakerChannel, 0);
         speakerActive = false;
         lastEmergencyState = false;
-        Serial.println("Emergency sound cleared safely.");
     }
 
     if (calibrating) {

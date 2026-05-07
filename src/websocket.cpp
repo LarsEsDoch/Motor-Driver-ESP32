@@ -55,6 +55,7 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                         } else {
                             calibrating = false;
                             calibrateStep = 0;
+                            ledcWrite(motorChannel, 0);
                             Serial.println("Calibration cancelled via web socket. Returned to old values.");
                         }
                         playClick(1000, 500);
@@ -62,6 +63,10 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
 
                     if (message == "toggleTest") {
                         testing = !testing;
+                        testPhase = 0;
+                        targetRPM = 0;
+                        motorSpeed = 0;
+                        ledcWrite(motorChannel, 0);
                         Serial.printf("%s test mode via web server.\n", controlMode == 1 ? "Activated" : "Deactivated");
                         playClick(1000, 200);
                     }

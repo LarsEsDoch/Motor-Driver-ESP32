@@ -28,6 +28,7 @@ void test() {
             FastLED.show();
             Serial.println("Starting Frequency Sweep (100Hz - 20000Hz)...");
             sweepFreq = 100;
+            motorDuty = 0;
             lastStepTime = now;
             testPhase = 1;
             break;
