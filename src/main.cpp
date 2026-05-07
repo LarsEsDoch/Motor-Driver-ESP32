@@ -168,7 +168,7 @@ void loop() {
     static uint32_t modeButtonPressStartTime = 0;
     static uint32_t totalPressStartTime = 0;
     static bool modeButtonWasPressed = false;
-    bool modeActionExecuted = false;
+    static bool modeActionExecuted = false;
 
     if (digitalRead(MODE_BUTTON_PIN) == LOW) {
         if (!modeButtonWasPressed) {
@@ -214,14 +214,17 @@ void loop() {
     static uint32_t calibrateButtonPressStartTime = 0;
     static bool calibrateButtonWasPressed = false;
     static bool calibrateLongActionExecuted = false;
+    static uint32_t calibrateButtonLastReleaseTime = 0;
 
     const bool calibBtnDown = (digitalRead(CALIBRATE_BUTTON_PIN) == LOW);
 
     if (calibBtnDown) {
         if (!calibrateButtonWasPressed) {
-            calibrateButtonPressStartTime = millis();
-            calibrateButtonWasPressed = true;
-            calibrateLongActionExecuted = false;
+            if (millis() - calibrateButtonLastReleaseTime >= 50) {
+                calibrateButtonPressStartTime = millis();
+                calibrateButtonWasPressed = true;
+                calibrateLongActionExecuted = false;
+            }
         } else if (!calibrateLongActionExecuted && millis() - calibrateButtonPressStartTime >= 3000) {
             testing = !testing;
             targetRPM = 0;
@@ -234,6 +237,7 @@ void loop() {
         }
     } else {
         if (calibrateButtonWasPressed) {
+            calibrateButtonLastReleaseTime = millis();
             if (!calibrateLongActionExecuted && millis() - calibrateButtonPressStartTime < 3000) {
                 if (!calibrating) {
                     calibrating = true;
