@@ -271,8 +271,13 @@ void loop() {
         FastLED.setBrightness(pulse);
         FastLED.show();
 
-        uint16_t sirenFreq = beatsin16(40, 600, 1200);
-        ledcWriteTone(speakerChannel, sirenFreq);
+        static uint32_t lastSirenUpdate = 0;
+        if (millis() - lastSirenUpdate > 15) {
+            uint16_t sirenFreq = beatsin16(40, 600, 1200);
+            ledcWriteTone(speakerChannel, sirenFreq);
+            lastSirenUpdate = millis();
+        }
+
         lastEmergencyState = true;
         return;
     }
