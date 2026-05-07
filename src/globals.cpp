@@ -55,7 +55,7 @@ volatile bool firstIntervalSeeded = false;
 bool webUIControl = false;
 float potAtWebUITakeover = 0.0f;
 
-bool speakerActive = false;
-uint32_t speakerOffTime = 0;
+volatile bool speakerActive = false;
+volatile uint32_t speakerOffTime = 0;
 
 int testPhase = 0;

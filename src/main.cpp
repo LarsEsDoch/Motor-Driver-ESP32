@@ -75,7 +75,7 @@ void setup() {
 }
 
 void loop() {
-    updateSpeaker();
+    if (!emergencyStop) updateSpeaker();
 
     if (triggerFlash) {
         triggerFlash = false;
@@ -160,8 +160,8 @@ void loop() {
         calibrating = false;
         calibrateStep = 0;
         testPhase = 0;
-        ledcWriteTone(speakerChannel, 0);
         speakerActive = false;
+        ledcWrite(speakerChannel, 0);
     }
     emergencyBtnWasPressed = emergencyBtnPressed;
 
@@ -274,7 +274,7 @@ void loop() {
     }
 
     if (lastEmergencyState) {
-        ledcWriteTone(speakerChannel, 0);
+        ledcWrite(speakerChannel, 0);
         speakerActive = false;
         lastEmergencyState = false;
     }

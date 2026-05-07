@@ -11,7 +11,7 @@ void playClick(const int freq, const int duration) {
 
 void updateSpeaker() {
     if (speakerActive && millis() >= speakerOffTime) {
-        ledcWriteTone(speakerChannel, 0);
+        ledcWrite(speakerChannel, 0);
         speakerActive = false;
     }
 }

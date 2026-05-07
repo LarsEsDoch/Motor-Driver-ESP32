@@ -86,7 +86,7 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                         calibrateStep = 0;
                         testPhase = 0;
                         speakerActive = false;
-                        ledcWriteTone(speakerChannel, 0);
+                        ledcWrite(speakerChannel, 0);
                         Serial.printf("Emergency stop %s via web server.\n", emergencyStop ? "activated" : "deactivated");
                     }
                 }
