@@ -241,6 +241,8 @@ void loop() {
             if (!calibrateLongActionExecuted && millis() - calibrateButtonPressStartTime < 3000) {
                 if (!calibrating) {
                     calibrating = true;
+                    targetRPM = 0;
+                    motorSpeed = 0;
                     zeroCount = 0;
                     calibrateStep = 1;
                     FastLED.setBrightness(0);
@@ -249,6 +251,12 @@ void loop() {
                 } else {
                     calibrating = false;
                     calibrateStep = 0;
+
+                    motorSpeed = 0;
+                    targetRPM = 0;
+                    currentSpeed = 0;
+                    integrator = 0;
+
                     ledcWrite(motorChannel, 0);
                     Serial.println("Calibration cancelled. Returned to old values.");
                 }
@@ -305,7 +313,7 @@ void loop() {
         controlRPM();
     }
 
-    uint16_t referenceSpeed = (controlMode == 0) ? motorSpeed : static_cast<uint16_t>(currentSpeed);
+    uint16_t referenceSpeed = (controlMode == 0) ? motorSpeed : currentSpeed;
 
     if (controlMode == 0) {
         ledBrightness = (referenceSpeed < minStartDuty) ? 0 : static_cast<uint8_t>(map(referenceSpeed, minStartDuty, 4095, 0, 255));

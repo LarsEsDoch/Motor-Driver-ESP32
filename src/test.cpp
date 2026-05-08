@@ -14,6 +14,9 @@
 // 6 = Done
 
 void test() {
+    motorSpeed = 0;
+    targetRPM = 0;
+
     static uint32_t lastStepTime = 0;
     static int sweepFreq = 100;
     static int motorDuty = 0;

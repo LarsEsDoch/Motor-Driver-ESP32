@@ -5,6 +5,8 @@
 #include "motor.h"
 
 void calibrate() {
+    motorSpeed = 0;
+    targetRPM = 0;
     switch (calibrateStep) {
         case 1: {
             static uint32_t lastCheck = 0;
@@ -68,6 +70,12 @@ void calibrate() {
                 Serial.println("Calibration Error: Motor not starting!");
                 calibrating = false;
                 calibrateStep = 0;
+
+                motorSpeed = 0;
+                targetRPM = 0;
+                currentSpeed = 0;
+                integrator = 0;
+
                 ledcWrite(motorChannel, 0);
             }
             break;
@@ -261,6 +269,7 @@ void calibrate() {
             Serial.println("Saved settings to flash storage.");
             playClick(2000, 500);
             calibrating = false;
+            ledcWrite(motorChannel, 0);
             calibrateStep = 0;
         }
     }

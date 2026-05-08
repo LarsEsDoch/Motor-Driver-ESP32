@@ -30,7 +30,7 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                     if (strcmp(sliderType, "speed") == 0 || strcmp(sliderType, "speedChange") == 0) {
                         if (controlMode == 0) {
                             motorSpeed = val;
-                            ledcWrite(motorChannel, motorSpeed);
+                            if (!testing) ledcWrite(motorChannel, motorSpeed);
                         } else {
                             targetRPM = val;
                         }
@@ -47,6 +47,8 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                     if (message == "toggleCalibration") {
                         if (!calibrating) {
                             calibrating = true;
+                            targetRPM = 0;
+                            motorSpeed = 0;
                             FastLED.setBrightness(0);
                             FastLED.show();
                             zeroCount = 0;
@@ -55,6 +57,12 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                         } else {
                             calibrating = false;
                             calibrateStep = 0;
+
+                            motorSpeed = 0;
+                            targetRPM = 0;
+                            currentSpeed = 0;
+                            integrator = 0;
+
                             ledcWrite(motorChannel, 0);
                             Serial.println("Calibration cancelled via web socket. Returned to old values.");
                         }
