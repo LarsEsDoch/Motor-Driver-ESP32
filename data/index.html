@@ -1,328 +1,367 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="font-size: 110%;">
 <head>
     <meta charset="UTF-8">
-    <title>ESP32 Motor Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Motor Dashboard Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --white: #d7d7d7;
+            --primary: #6366f1;
+            --accent: #06b6d4;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --bg-dark: #0d1117;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
         body {
-            font-family: sans-serif;
-            text-align: center;
-            background: #121212;
-            color: white;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            background-image: linear-gradient(135deg, #1f2937 0%, #0d1117 80%);
+            color: #f3f4f6;
             margin: 0;
+            min-height: 100vh;
             display: flex;
-            justify-content: center;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 2.2rem;
+            height: 80vh;
         }
+
+        body::-webkit-scrollbar {
+            width: 0;
+        }
+
+        .glow-circle {
+            position: fixed;
+            width: 550px;
+            height: 550px;
+            border-radius: 50%;
+            filter: blur(110px);
+            z-index: -1;
+            opacity: 0.3;
+            transition: background 1.5s ease;
+            animation: pulse 8s infinite alternate;
+        }
+        #glow-1 { top: -10%; left: -10%; background: var(--white); }
+        #glow-2 { bottom: -10%; right: -10%; background: var(--white); animation-delay: -4s; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1) translate(22px, 44px); }
+        }
+
+        h1#heading {
+            font-weight: 800;
+            font-size: 2.42rem;
+            margin-bottom: 2.75rem;
+            letter-spacing: -0.05em;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
         .dashboard-container {
             display: grid;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            grid-template-columns: repeat(3, 1fr);
-            padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
-            justify-items: center;
-            width: max-content;
+            grid-template-columns: repeat(auto-fit, minmax(308px, 1fr));
+            gap: 1.65rem;
+            width: 100%;
+            max-width: 1100px;
+            z-index: 10;
         }
+
         .card {
-            background: #1e1e1e;
-            padding: 20px;
-            border-radius: 10px;
-            width: 250px;
-            height: 250px;
+            background: var(--glass);
+            backdrop-filter: blur(17.6px);
+            -webkit-backdrop-filter: blur(17.6px);
+            border: 1px solid var(--glass-border);
+            border-radius: 26px;
+            padding: 1.65rem;
+            height: 242px;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            text-align: center;
+            transition: transform 0.3s ease;
         }
-        #rpm { font-size: 3rem; color: white; }
-        #control-target { font-size: 3rem; color: white; }
-        #status { color: green; }
-        #calibrating-step { font-size: 3rem; color: white; }
-        #emergency-status { font-size: 3rem; color: green; }
-        h1 {
-            font-weight: 300;
+
+        .card h1 {
+            font-size: 0.935rem;
+            text-transform: uppercase;
+            letter-spacing: 0.11em;
+            color: #9ca3af;
+            margin: 0 0 0.55rem 0;
         }
-        #heading {
-            margin-bottom: 50px;
-            font-size: 3rem;
+
+        .main-val {
+            font-size: 3.3rem;
+            font-weight: 800;
+            margin: 0.55rem 0;
         }
-        #pid-output {
-            display: none;
-            font-weight: bold;
-            color: #00bcd4;
+
+        .sub-info {
+            font-size: 0.99rem;
+            color: #9ca3af;
+            margin: 2.2px 0;
         }
+
         button {
-            padding: 5px;
-            margin: 5px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            padding: 0.66rem 1.1rem;
+            margin: 4.4px;
+            border-radius: 13.2px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+        button:hover { background: rgba(255,255,255,0.165); transform: translateY(-2.2px); }
+
+
+        #emergency-button {
+            margin-top: 2rem;
+            background: var(--danger);
+            font-size: 1.8rem;
+            font-weight: 800;
+            padding: 1rem 3rem;
             border-radius: 20px;
-            font-size: 1.5rem;
+            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3);
             border: none;
         }
-        button:hover {
-            background: #cccccc;
-        }
-        button:active {
-            background: #8f8f8f;
-            transform: translateY(3px);
-        }
-        #speed-slider-label {
-            font-size: 1.5rem;
-            padding-bottom: 2px;
-        }
+
         #speed-slider {
-            accent-color: #00cbb6;
+            margin-bottom: 30px;
+            margin-top: 2rem;
         }
-        #emergency-button {
-            background: #ff7171;
-            font-size: 3rem;
-            padding: 10px;
-            border-radius: 40px;
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 90%;
+            background: transparent;
+            margin: 11px auto;
         }
-        #emergency-button:active {
-            background: #ff2c2c;
+        input[type=range]:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
         }
-        #calibration-date-container {
-            margin: 0;
-            font-size: 0.8rem;
-            color: #8f8f8f;
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 6.6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3.3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin-top: -7.7px;
+            box-shadow: 0 0 11px var(--accent);
         }
     </style>
 </head>
 <body>
-    <h1 id="heading">ESP32 Motor Driver Control Dashboard</h1>
-    <div class="dashboard-container">
-        <div class="card">
-            <h1>Calibrating Status</h1>
-            <div id="calibrating-step">0/6</div>
-            <p><span id="calibrating-info">No calibration in progress</span></p>
-            <p id="calibration-date-container"><span id="calibration-date">No calibration done</span></p>
-        </div>
-        <div class="card">
-            <h1>Motor RPM</h1>
-            <div id="rpm">0.00</div>
-            <p>Connection Status: <span id="status">Connected</span></p>
-        </div>
-        <div class="card">
-            <h1>Control Mode</h1>
-            <div id="control-target">0</div>
-            <p><span id="pid-output">0</span></p>
-            <p>Mode: <span id="control-mode">Voltage</span></p>
-        </div>
-        <div class="card">
-            <h1>PID Values</h1>
-            <p>Minimum start duty: <span id="min-duty">0</span></p>
-            <p>Maximum RPM: <span id="max-rpm">0.00</span></p>
-            <p>Kp: <span id="kp">0.0000</span></p>
-            <p>Ki: <span id="ki">0.0000</span></p>
-        </div>
-        <div class="card">
-            <h1>Status</h1>
-            <div id="emergency-status">Healthy</div>
-            <p>Rotation: <span id="rotation-count">0</span></p>
-            <p>Pot value: <span id="pot-value">0</span></p>
-        </div>
-        <div class="card">
-            <h1>Controls</h1>
-            <label id="speed-slider-label" for="speed-slider">Speed:</label>
-            <input type="range" id="speed-slider" name="volume" min="0" max="4095" value="0">
+
+<div id="glow-1" class="glow-circle"></div>
+<div id="glow-2" class="glow-circle"></div>
+
+<h1 id="heading">ESP32 Motor Driver Control Dashboard</h1>
+
+<div class="dashboard-container">
+    <div class="card">
+        <h1>Calibrating Status</h1>
+        <div id="calibrating-step" class="main-val">0/6</div>
+        <p id="calibrating-info" class="sub-info">No calibration in progress</p>
+        <p id="calibration-date" class="sub-info" style="font-size: 0.825rem; color: #8f8f8f;"></p>
+    </div>
+
+    <div class="card">
+        <h1>Motor RPM</h1>
+        <div id="rpm" class="main-val">0</div>
+        <p class="sub-info">Connection Status: <span id="status" style="color:var(--success)">Connected</span></p>
+    </div>
+
+    <div class="card">
+        <h1>Control Mode</h1>
+        <div id="control-target" class="main-val">0.00%</div>
+        <p id="pid-output" class="sub-info" style="display:none; color:var(--accent); font-weight:bold;"></p>
+        <p class="sub-info">Mode: <span id="control-mode">Voltage</span></p>
+    </div>
+
+    <div class="card">
+        <h1>PID Values</h1>
+        <p class="sub-info">Min start duty: <span id="min-duty" style="color:white">0</span></p>
+        <p class="sub-info">Max RPM: <span id="max-rpm" style="color:white">0.00</span></p>
+        <p class="sub-info">Kp: <span id="kp" style="color:var(--accent)">0.0000</span></p>
+        <p class="sub-info">Ki: <span id="ki" style="color:var(--accent)">0.0000</span></p>
+    </div>
+
+    <div class="card">
+        <h1>Status</h1>
+        <div id="emergency-status" class="main-val" style="font-size: 2.2rem; color:var(--success)">Healthy</div>
+        <p class="sub-info">Rotation: <span id="rotation-count">0</span></p>
+        <p class="sub-info">Pot value: <span id="pot-value">0</span></p>
+    </div>
+
+    <div class="card">
+        <h1>Controls</h1>
+        <input type="range" id="speed-slider" min="0" max="4095" value="0">
+        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
             <button id="calibrate-button" onclick="toggleCalibration()">Start calibration</button>
             <button id="test-button" onclick="toggleTest()">Start test</button>
             <button id="control-button" onclick="toggleMotorMode()">RPM control</button>
         </div>
-
     </div>
-    <button id="emergency-button" onclick="toggleEmergency()">Emergency</button>
-    <script>
-        var gateway = `ws://${window.location.hostname}/ws`;
-        var websocket;
-        const speedSlider = document.getElementById("speed-slider");
-        var oldControlMode = "Voltage";
-        window.addEventListener('load', () => {
-            websocket = new WebSocket(gateway);
-            websocket.onmessage = (event) => {
-                let data = JSON.parse(event.data);
-                console.log(data);
+</div>
 
-                document.getElementById('rpm').innerHTML = data.rpm;
+<button id="emergency-button" onclick="toggleEmergency()">Emergency</button>
 
-                let color = "white";
-                if(data.trend === 0) color = "#00ff00";
-                if(data.trend === 2) color = "#ff4444";
-                document.getElementById('rpm').style.color = color;
+<script>
+    var gateway = `ws://${window.location.hostname}/ws`;
+    var websocket;
+    const speedSlider = document.getElementById("speed-slider");
+    const glow1 = document.getElementById('glow-1');
+    const glow2 = document.getElementById('glow-2');
+    var oldControlMode = "Voltage";
+    let sliderTarget = 0;
+    let sliderCurrent = 0;
+    let isSliderActive = false;
 
-                let controlMode = "Voltage"
-                let controlTarget = (parseInt(data.target_speed) / 4095 * 100).toFixed(2) + "%";
-                let pidElement = document.getElementById("pid-output");
-                const slider = document.getElementById('speed-slider');
-                if (data.control_mode === 1) {
-                    controlMode = "RPM";
-                    controlTarget = data.target_rpm + " RPM"
-                    pidElement.style.display = "block";
-                    pidElement.innerHTML = "PID: " + data.pid_output;
+    window.addEventListener('load', () => {
+        initWebSocket();
+        requestAnimationFrame(lerpSlider);
+    });
 
-                    slider.max = data.max_rpm;
-                    document.getElementById('control-button').innerHTML = "Voltage control";
-                } else {
-                    pidElement.style.display = "none";
+    function initWebSocket() {
+        websocket = new WebSocket(gateway);
+        websocket.onmessage = onMessage;
+        websocket.onclose = () => {
+            document.getElementById('status').innerHTML = "Disconnected";
+            document.getElementById('status').style.color = "var(--danger)";
+            setTimeout(initWebSocket, 2000);
+        };
+    }
 
-                    slider.max = "4095";
-                    document.getElementById('control-button').innerHTML = "RPM control";
-                }
-                if (data.control_mode !== oldControlMode) {
-                    speedSlider.value = 0;
-                    oldControlMode = data.control_mode;
-                }
-                document.getElementById('control-mode').innerHTML = controlMode;
-                document.getElementById('control-target').innerHTML = controlTarget;
+    function onMessage(event) {
+        let data = JSON.parse(event.data);
 
-                let testGoal = "No calibration in progress"
-                switch (parseInt(data.calibrate_step)) {
-                    case 0:
-                        testGoal = "No calibration in progress";
-                        break;
-                    case 1:
-                        testGoal = "Waiting to stop spinning";
-                        break
-                    case 2:
-                        testGoal = "Minimum motor duty";
-                        break;
-                    case 3:
-                        testGoal = "Maximum motor speed";
-                        break;
-                    case 4:
-                        testGoal = "50% motor speed";
-                        break;
-                    case 5:
-                        testGoal = "80% motor speed";
-                        break;
-                    case 6:
-                        testGoal = "Waiting for confirmation to finish";
-                        break;
-                }
+        document.getElementById('rpm').innerHTML = data.rpm;
+        document.getElementById('rotation-count').innerHTML = data.rotation;
+        document.getElementById('pot-value').innerHTML = data.pot;
+        document.getElementById('min-duty').innerHTML = data.min_duty;
+        document.getElementById('max-rpm').innerHTML = data.max_rpm;
+        document.getElementById('kp').innerHTML = data.kp;
+        document.getElementById('ki').innerHTML = data.ki;
 
-                if (parseInt(data.calibrate_step) > 0) {
-                    calibrateButton.innerHTML = "Stop calibration";
-                } else {
-                    calibrateButton.innerHTML = "Start calibration";
-                }
+        let rpmColor = "white";
+        if(data.trend === 0) rpmColor = "var(--success)";
+        if(data.trend === 2) rpmColor = "var(--danger)";
+        document.getElementById('rpm').style.color = rpmColor;
 
-                document.getElementById('calibrating-step').innerHTML = parseInt(data.calibrate_step) + "/6";
-                document.getElementById('calibrating-info').innerHTML = testGoal;
+        let modeText = "Voltage";
+        let targetText = (parseInt(data.target_speed) / 40.95).toFixed(2) + "%";
+        let pidElement = document.getElementById("pid-output");
 
-                if (data.last_calibration_time == "No calibration done") {
-                    document.getElementById('calibration-date').innerHTML = data.last_calibration_time;
-                    document.getElementById('calibration-date').style.color = "#8f8f8f";
-                } else {
-                    document.getElementById('calibration-date').innerHTML = "Last: " + data.last_calibration_time;
-                    document.getElementById('calibration-date').style.color = "#8f8f8f";
-                }
+        if (data.control_mode === 1) {
+            modeText = "RPM";
+            targetText = data.target_rpm + " RPM";
+            pidElement.style.display = "block";
+            pidElement.innerHTML = "PID: " + data.pid_output;
+            speedSlider.max = data.max_rpm;
+            document.getElementById('control-button').innerHTML = "Voltage control";
+        } else {
+            pidElement.style.display = "none";
+            speedSlider.max = "4095";
+            document.getElementById('control-button').innerHTML = "RPM control";
+        }
+        document.getElementById('control-mode').innerHTML = modeText;
+        document.getElementById('control-target').innerHTML = targetText;
 
+        const steps = ["No calibration in progress", "Waiting to stop spinning", "Minimum motor duty", "Maximum motor speed", "50% motor speed", "80% motor speed", "Waiting for confirmation"];
+        document.getElementById('calibrating-step').innerHTML = data.calibrate_step + "/6";
+        document.getElementById('calibrating-info').innerHTML = steps[data.calibrate_step];
+        document.getElementById('calibrate-button').innerHTML = data.calibrate_step > 0 ? "Stop calibration" : "Start calibration";
+        document.getElementById('calibration-date').innerHTML = data.last_calibration_time !== "No calibration done" ? "Last: " + data.last_calibration_time : "";
 
-                let testButton = document.getElementById("test-button");
+        document.getElementById('test-button').innerHTML = data.testing ? "Stop test" : "Start test";
 
-                if (data.testing === 1) {
-                    testButton.innerHTML = "Stop test";
-                } else {
-                    testButton.innerHTML = "Start test";
-                }
+        let isBlocked = (data.calibrate_step > 0 || data.testing || data.emergency);
+        speedSlider.disabled = isBlocked;
 
-                document.getElementById('rotation-count').innerHTML = data.rotation;
-                document.getElementById('pot-value').innerHTML = data.pot;
-                if (data.emergency) {
-                    document.getElementById('emergency-status').innerHTML = "Emergency!";
-                    document.getElementById('emergency-status').style.color = "red";
-                    document.getElementById('emergency-button').innerHTML = "Cancel";
-                    sliderTarget = 0;
-                } else {
-                    document.getElementById('emergency-status').innerHTML = "Healthy!";
-                    document.getElementById('emergency-status').style.color = "green";
-                    document.getElementById('emergency-button').innerHTML = "Emergency";
-                }
+        if (data.emergency) {
+            document.getElementById('emergency-status').innerHTML = "Emergency!";
+            document.getElementById('emergency-status').style.color = "var(--danger)";
+            document.getElementById('emergency-button').innerHTML = "Cancel";
+            glow1.style.background = "var(--danger)";
+            glow2.style.background = "#500";
+        } else {
+            document.getElementById('emergency-status').innerHTML = "Healthy";
+            document.getElementById('emergency-status').style.color = "var(--success)";
+            document.getElementById('emergency-button').innerHTML = "Emergency";
 
-                document.getElementById('min-duty').innerHTML = data.min_duty;
-                document.getElementById('max-rpm').innerHTML = data.max_rpm;
-                document.getElementById('kp').innerHTML = data.kp;
-                document.getElementById('ki').innerHTML = data.ki;
-
-                if (!isSliderActive) sliderTarget = data.slider_value;
-            };
-
-            websocket.onclose = () => {
-                let status = document.getElementById('status');
-                status.innerHTML = "Disconnected";
-                status.style.color = "red";
-                document.getElementById('rpm').innerHTML = "0.00";
-                speedSlider.value = 0;
-                setTimeout(() => { window.location.reload(); }, 2000);
-            };
-        });
-
-        let lastSendTime = 0;
-        const throttleDelay = 100;
-
-        speedSlider.addEventListener("input", function() {
-            let now = Date.now()
-
-            sliderCurrent = parseInt(speedSlider.value);
-            sliderTarget = sliderCurrent;
-
-            if (now - lastSendTime >= throttleDelay) {
-                let data = {
-                    type: "speed",
-                    value: speedSlider.value
-                };
-                websocket.send(JSON.stringify(data));
-                lastSendTime = now;
+            if (data.calibrate_step > 0) {
+                glow1.style.background = "var(--success)";
+                glow2.style.background = "#1dada1";
+            } else if (data.testing) {
+                glow1.style.background = "var(--warning)";
+                glow2.style.background = "#a50";
+            } else if (data.control_mode === 1){
+                glow1.style.background = "var(--primary)";
+                glow2.style.background = "var(--accent)";
+            } else {
+                glow1.style.background = "var(--accent)";
+                glow2.style.background = "var(--primary)";
             }
-        });
-
-        speedSlider.addEventListener("change", function() {
-            let data = {
-                type: "speedChange",
-                value: speedSlider.value
-            };
-            websocket.send(JSON.stringify(data));
-        });
-
-        let calibrateButton = document.getElementById("calibrate-button");
-        function toggleCalibration() {
-            websocket.send("toggleCalibration");
         }
 
-        function toggleTest() {
-            websocket.send("toggleTest");
-        }
-        function toggleMotorMode() {
-            websocket.send("toggleMode");
-        }
-        function toggleEmergency() {
-            websocket.send("emergencyStop");
-        }
+        if (!isSliderActive) sliderTarget = data.slider_value;
+    }
 
-        let sliderTarget = 0;
-        let sliderCurrent = 0;
-        let isSliderActive = false;
+    function toggleCalibration() { websocket.send("toggleCalibration"); }
+    function toggleTest() { websocket.send("toggleTest"); }
+    function toggleMotorMode() { websocket.send("toggleMode"); }
+    function toggleEmergency() { websocket.send("emergencyStop"); }
 
-        speedSlider.addEventListener("mousedown",  () => isSliderActive = true);
-        speedSlider.addEventListener("touchstart", () => isSliderActive = true);
-        speedSlider.addEventListener("mouseup",    () => isSliderActive = false);
-        speedSlider.addEventListener("touchend",   () => isSliderActive = false);
+    let lastSendTime = 0;
+    speedSlider.addEventListener("input", () => {
+        isSliderActive = true;
+        sliderTarget = speedSlider.value;
+        sliderCurrent = parseFloat(speedSlider.value);
+        let now = Date.now();
+        if (now - lastSendTime > 100) {
+            websocket.send(JSON.stringify({type: "speed", value: speedSlider.value}));
+            lastSendTime = now;
+        }
+    });
 
-        function lerpSlider() {
-            if (!isSliderActive) {
-                const diff = sliderTarget - sliderCurrent;
-                if (Math.abs(diff) > 0.5) {
-                    sliderCurrent += diff * 0.06;
-                    speedSlider.value = Math.round(sliderCurrent);
-                }
+    speedSlider.addEventListener("change", () => {
+        isSliderActive = false;
+        sliderTarget = speedSlider.value;
+        sliderCurrent = parseFloat(speedSlider.value);
+        websocket.send(JSON.stringify({type: "speedChange", value: speedSlider.value}));
+    });
+
+    function lerpSlider() {
+        if (!isSliderActive) {
+            const diff = sliderTarget - sliderCurrent;
+            if (Math.abs(diff) > 0.1) {
+                sliderCurrent += diff * 0.04;
+                speedSlider.value = Math.round(sliderCurrent);
+            } else {
+                sliderCurrent = sliderTarget;
+                speedSlider.value = sliderTarget;
             }
-            requestAnimationFrame(lerpSlider);
         }
         requestAnimationFrame(lerpSlider);
-    </script>
+    }
+</script>
 </body>
 </html>
