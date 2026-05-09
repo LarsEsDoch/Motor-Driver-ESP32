@@ -128,13 +128,13 @@ void controlRPM() {
     integrator = constrain(integrator, -INTEGRATOR_CLAMP, INTEGRATOR_CLAMP);
 
     float output = (Kp * error) + (Ki * integrator);
-    currentSpeed += output;
+    int32_t newSpeed = static_cast<int32_t>(currentSpeed) + static_cast<int32_t>(output);
 
-    if (currentSpeed < minStartDuty) {
-        currentSpeed = minStartDuty;
+    if (newSpeed < static_cast<int32_t>(minStartDuty)) {
+        newSpeed = static_cast<int32_t>(minStartDuty);
     }
 
-    currentSpeed = constrain(currentSpeed, 0, 4095);
+    currentSpeed = static_cast<uint16_t>(constrain(newSpeed, 0, 4095));
     ledcWrite(motorChannel, currentSpeed);
     ledBrightness = map(currentSpeed, 0, 4095, 0, 255);
 
