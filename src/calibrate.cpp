@@ -5,11 +5,31 @@
 #include "motor.h"
 
 void calibrate() {
+    static uint32_t lastCheck = 0;
+    static uint32_t lastStepTime = 0;
+    static uint16_t testDuty = 500;
+    static uint8_t startCount = 0;
+    static uint8_t stableCount = 0;
+    static uint8_t stableCount50 = 0;
+    static uint8_t stableCount80 = 0;
+    static int prevStep = 0;
+
     motorSpeed = 0;
     targetRPM = 0;
+
+    if (prevStep == 0 && calibrateStep == 1) {
+        lastCheck = 0;
+        lastStepTime = 0;
+        testDuty = 500;
+        startCount = 0;
+        stableCount = 0;
+        stableCount50 = 0;
+        stableCount80 = 0;
+    }
+    prevStep = calibrateStep;
     switch (calibrateStep) {
         case 1: {
-            static uint32_t lastCheck = 0;
+            lastCheck = 0;
             const uint32_t now = millis();
 
             ledcWrite(motorChannel, 0);
@@ -36,8 +56,8 @@ void calibrate() {
             break;
         }
         case 2: {
-            static uint32_t lastStepTime = 0;
-            static uint16_t testDuty = 500;
+            lastStepTime = 0;
+            testDuty = 500;
 
             const uint32_t now = millis();
 
@@ -52,7 +72,7 @@ void calibrate() {
                         Serial.printf("Testing minDuty: %u | Current RPM: %.2f\n", testDuty, smoothedRPM);
                     }
                 } else {
-                    static uint8_t startCount = 0;
+                    startCount = 0;
                     startCount++;
 
                     if (startCount >= 5) {
@@ -93,7 +113,7 @@ void calibrate() {
                 const float deltaTime = (now2 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
-                static uint8_t stableCount = 0;
+                stableCount = 0;
 
                 if (abs(acceleration) < 50.0f && smoothedRPM > 500) {
                     stableCount++;
@@ -135,7 +155,7 @@ void calibrate() {
                 const float deltaTime = (now3 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
-                static uint8_t stableCount50 = 0;
+                stableCount50 = 0;
 
                 if (abs(acceleration) < 30.0f && (now3 - tuneTimer > 5000)) {
                     stableCount50++;
@@ -186,7 +206,7 @@ void calibrate() {
                 const float deltaTime = (now4 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
-                static uint8_t stableCount80 = 0;
+                stableCount80 = 0;
 
                 if (abs(acceleration) < 40.0f && (now4 - tuneTimer > 5000)) {
                     stableCount80++;
