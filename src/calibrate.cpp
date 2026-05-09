@@ -29,7 +29,6 @@ void calibrate() {
     prevStep = calibrateStep;
     switch (calibrateStep) {
         case 1: {
-            lastCheck = 0;
             const uint32_t now = millis();
 
             ledcWrite(motorChannel, 0);
@@ -184,7 +183,6 @@ void calibrate() {
             }
             break;
         }
-
         case 5: {
             ledcWrite(motorChannel, 3276);
 
@@ -243,7 +241,6 @@ void calibrate() {
             }
             break;
         }
-
         default:
             break;
     }
@@ -261,12 +258,17 @@ void calibrate() {
 
             configTime(3600, 3600, "pool.ntp.org");
             tm timeInfo;
-            if (!getLocalTime(&timeInfo)) {
-                Serial.println("Time couldn't get requested.");
-            } else {
+            int ntpRetries = 0;
+            while (!getLocalTime(&timeInfo) && ntpRetries < 20) {
+                delay(500);
+                ntpRetries++;
+            }
+            if (ntpRetries < 20) {
                 time_t now;
                 time(&now);
                 preferences.putULong("last_calibration", static_cast<uint32_t>(now));
+            } else {
+                Serial.println("Time couldn't get requested.");
             }
 
             preferences.putUShort("minDuty", minStartDuty);

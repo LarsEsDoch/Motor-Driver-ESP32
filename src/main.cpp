@@ -27,6 +27,8 @@ void setup() {
     Kp = preferences.getFloat("Kp", 0.8f);
     Ki = preferences.getFloat("Ki", 0.1f);
 
+    preferences.end();
+
     if (lastCalibrationTime != 0) {
         const struct tm *timeInfo = localtime(&lastCalibrationTime);
         char buffer[30];
