@@ -56,9 +56,6 @@ void calibrate() {
             break;
         }
         case 2: {
-            lastStepTime = 0;
-            testDuty = 500;
-
             const uint32_t now = millis();
 
             if (now - lastStepTime >= 300) {
@@ -72,7 +69,6 @@ void calibrate() {
                         Serial.printf("Testing minDuty: %u | Current RPM: %.2f\n", testDuty, smoothedRPM);
                     }
                 } else {
-                    startCount = 0;
                     startCount++;
 
                     if (startCount >= 5) {
@@ -100,7 +96,6 @@ void calibrate() {
             }
             break;
         }
-
         case 3: {
             ledcWrite(motorChannel, 4095);
 
@@ -112,8 +107,6 @@ void calibrate() {
             if (now2 - lastCheckTime >= 200) {
                 const float deltaTime = (now2 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
-
-                stableCount = 0;
 
                 if (abs(acceleration) < 50.0f && smoothedRPM > 500) {
                     stableCount++;
@@ -142,7 +135,6 @@ void calibrate() {
             }
             break;
         }
-
         case 4: {
             ledcWrite(motorChannel, 2048);
 
@@ -155,7 +147,6 @@ void calibrate() {
                 const float deltaTime = (now3 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
-                stableCount50 = 0;
 
                 if (abs(acceleration) < 30.0f && (now3 - tuneTimer > 5000)) {
                     stableCount50++;
@@ -205,8 +196,6 @@ void calibrate() {
             if (now4 - lastCheckTime >= 200) {
                 const float deltaTime = (now4 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
-
-                stableCount80 = 0;
 
                 if (abs(acceleration) < 40.0f && (now4 - tuneTimer > 5000)) {
                     stableCount80++;
