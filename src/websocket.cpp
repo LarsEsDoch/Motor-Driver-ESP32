@@ -17,8 +17,7 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
         case WS_EVT_DATA: {
             const AwsFrameInfo *info = static_cast<AwsFrameInfo *>(arg);
             if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-                data[len] = 0;
-                String message = reinterpret_cast<char *>(data);
+                String message(reinterpret_cast<char *>(data), len);
 
                 JsonDocument doc;
                 const DeserializationError error = deserializeJson(doc, message);
