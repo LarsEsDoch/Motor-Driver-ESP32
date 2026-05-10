@@ -17,7 +17,7 @@ void calibrate() {
     motorSpeed = 0;
     targetRPM = 0;
 
-    if (prevStep == 0 && calibrateStep == 1) {
+    if (calibrateStep == 1 && prevStep != 1) {
         lastCheck = 0;
         lastStepTime = 0;
         testDuty = 500;
@@ -104,7 +104,7 @@ void calibrate() {
 
             const uint32_t now2 = millis();
             if (now2 - lastCheckTime >= 200) {
-                const float deltaTime = (now2 - lastCheckTime) / 1000.0f;
+                const float deltaTime = static_cast<float>(now2 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
                 if (abs(acceleration) < 50.0f && smoothedRPM > 500) {
@@ -143,7 +143,7 @@ void calibrate() {
 
             const uint32_t now3 = millis();
             if (now3 - lastCheckTime >= 200) {
-                const float deltaTime = (now3 - lastCheckTime) / 1000.0f;
+                const float deltaTime = static_cast<float>(now3 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
 
@@ -192,7 +192,7 @@ void calibrate() {
 
             const uint32_t now4 = millis();
             if (now4 - lastCheckTime >= 200) {
-                const float deltaTime = (now4 - lastCheckTime) / 1000.0f;
+                const float deltaTime = static_cast<float>(now4 - lastCheckTime) / 1000.0f;
                 acceleration = (smoothedRPM - lastRPM) / deltaTime;
 
                 if (abs(acceleration) < 40.0f && (now4 - tuneTimer > 5000)) {
@@ -205,11 +205,11 @@ void calibrate() {
                     if (stableCount80 >= 10) {
                         rpmAt80 = smoothedRPM;
                         const float deltaRPM = rpmAt80 - rpmAt50;
-                        const float deltaPWM = 3276.0f - 2048.0f;
+                        constexpr float deltaPWM = 3276.0f - 2048.0f;
 
                         systemGain = deltaRPM / deltaPWM;
 
-                        const float timeToStabilize = (now4 - tuneTimer) / 1000.0f;
+                        const float timeToStabilize = static_cast<float>(now4 - tuneTimer) / 1000.0f;
                         timeConstant = timeToStabilize / 3.0f;
 
                         Serial.printf("RPM at 80%%: %.2f\n", rpmAt80);
@@ -257,7 +257,7 @@ void calibrate() {
             preferences.begin("motor-settings", false);
 
             configTime(3600, 3600, "pool.ntp.org");
-            tm timeInfo;
+            tm timeInfo{};
             int ntpRetries = 0;
             while (!getLocalTime(&timeInfo) && ntpRetries < 20) {
                 delay(500);

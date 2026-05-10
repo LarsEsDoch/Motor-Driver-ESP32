@@ -74,8 +74,8 @@ void adjustSpeed() {
         if (smoothedPot < (ADC_MIN + ADC_TOLERANCE)) {
             motorSpeed = 0;
         } else {
-            float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
-            float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
+            const float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
+            const float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
             motorSpeed = static_cast<uint16_t>((percent * (4095.0f - minStartDuty)) + minStartDuty);
         }
 
@@ -98,8 +98,8 @@ void controlRPM() {
     if (!webUIControl && abs(smoothedPot - lastTriggeredPot) > ADC_TOLERANCE) {
         lastTriggeredPot = smoothedPot;
 
-        float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
-        float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
+        const float constrainedPot = constrain(smoothedPot, ADC_MIN, ADC_MAX);
+        const float percent = (constrainedPot - ADC_MIN) / (ADC_MAX - ADC_MIN);
         targetRPM = percent * maxRPM;
 
         playClick(150, 10);
@@ -123,11 +123,11 @@ void controlRPM() {
         return;
     }
 
-    float error = targetRPM - smoothedRPM;
+    const float error = targetRPM - smoothedRPM;
     integrator += error;
     integrator = constrain(integrator, -INTEGRATOR_CLAMP, INTEGRATOR_CLAMP);
 
-    float output = (Kp * error) + (Ki * integrator);
+    const float output = (Kp * error) + (Ki * integrator);
     int32_t newSpeed = static_cast<int32_t>(currentSpeed) + static_cast<int32_t>(output);
 
     if (newSpeed < static_cast<int32_t>(minStartDuty)) {

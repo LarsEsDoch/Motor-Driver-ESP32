@@ -95,7 +95,7 @@ void loop() {
     }
 
     static uint32_t lastSeenTick = 0;
-    if (debugTickCount != lastSeenTick && currentDebugLevel <= DebugLevel::INFO) {
+    if (debugTickCount != lastSeenTick && DebugLevel::INFO <= currentDebugLevel) {
         Serial.printf("Rotation: %u | RPM: %.2f | Smoothed RPM: %.2f | Target RPM: %.2f | Motor speed: %hu | Current speed: %.2hu | ADC Pot: %.2f \n",
             debugTickCount, currentRPM, smoothedRPM, targetRPM, motorSpeed, currentSpeed, smoothedPot);
         lastSeenTick = debugTickCount;
@@ -103,6 +103,7 @@ void loop() {
 
     static uint32_t lastUpload = 0;
     if (millis() - lastUpload > 200) {
+        ws.cleanupClients();
         static float lastRPMDisplay = 0;
         constexpr float tolerance = 200.0f;
 
@@ -151,7 +152,7 @@ void loop() {
 
         ws.textAll(json);
         lastUpload = millis();
-        lastRPMDisplay = smoothedRPM;
+        lastRPMDisplay = displayRPM;
     }
 
     static bool emergencyBtnWasPressed = false;

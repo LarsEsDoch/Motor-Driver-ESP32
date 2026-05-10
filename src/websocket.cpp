@@ -31,7 +31,7 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                             motorSpeed = val;
                             if (!testing) ledcWrite(motorChannel, motorSpeed);
                         } else {
-                            targetRPM = val;
+                            targetRPM = static_cast<float>(val);
                         }
                         Serial.printf("Slider Speed changed over web server: %d\n", val);
                     }
@@ -101,6 +101,7 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
             break;
         }
         case WS_EVT_PONG:
+            break;
         case WS_EVT_ERROR:
             break;
         default:
