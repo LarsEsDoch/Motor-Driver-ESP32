@@ -23,8 +23,8 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                 const DeserializationError error = deserializeJson(doc, message);
 
                 if (!error) {
-                    const char* sliderType = doc["type"];
-                    const int val = doc["value"];
+                    const char* sliderType = doc["type"] | "";
+                    const int val = doc["value"] | 0;
 
                     if (strcmp(sliderType, "speed") == 0 || strcmp(sliderType, "speedChange") == 0) {
                         if (controlMode == 0) {
@@ -74,7 +74,7 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
                         targetRPM = 0;
                         motorSpeed = 0;
                         ledcWrite(motorChannel, 0);
-                        Serial.printf("%s test mode via web server.\n", controlMode == 1 ? "Activated" : "Deactivated");
+                        Serial.printf("%s test mode via web server.\n", testing == 1 ? "Activated" : "Deactivated");
                         playClick(1000, 200);
                     }
 
