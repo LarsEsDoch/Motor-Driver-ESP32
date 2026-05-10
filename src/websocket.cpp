@@ -103,8 +103,10 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
         case WS_EVT_PONG:
             break;
         case WS_EVT_ERROR:
+            Serial.printf("WebSocket client #%u error\n", client->id());
             break;
         default:
+            Serial.printf("Unhandled WebSocket event type: %d\n", type);
             break;
     }
 }
