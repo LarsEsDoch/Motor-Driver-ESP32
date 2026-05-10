@@ -25,6 +25,8 @@ void calibrate() {
         stableCount = 0;
         stableCount50 = 0;
         stableCount80 = 0;
+        lastCheckTime = 0;
+        lastRPM = 0;
     }
     prevStep = calibrateStep;
     switch (calibrateStep) {

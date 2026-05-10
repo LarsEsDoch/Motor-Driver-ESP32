@@ -17,14 +17,17 @@ void onEvent(AsyncWebSocket *server, const AsyncWebSocketClient *client, const A
         case WS_EVT_DATA: {
             const AwsFrameInfo *info = static_cast<AwsFrameInfo *>(arg);
             if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-                String message(reinterpret_cast<char *>(data), len);
+                String message = "";
+                for (size_t i = 0; i < len; i++) {
+                    message += static_cast<char>(data[i]);
+                }
 
                 JsonDocument doc;
                 const DeserializationError error = deserializeJson(doc, message);
 
                 if (!error) {
-                    const char* sliderType = doc["type"] | "";
-                    const int val = doc["value"] | 0;
+                    const char* sliderType = doc["type"];
+                    const int val = doc["value"];
 
                     if (strcmp(sliderType, "speed") == 0 || strcmp(sliderType, "speedChange") == 0) {
                         if (controlMode == 0) {
