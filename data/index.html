@@ -330,6 +330,10 @@
     function toggleMotorMode() { websocket.send("toggleMode"); }
     function toggleEmergency() { websocket.send("emergencyStop"); }
 
+    speedSlider.addEventListener("pointerdown", () => {
+        isSliderActive = true;
+    });
+
     let lastSendTime = 0;
     speedSlider.addEventListener("input", () => {
         isSliderActive = true;
@@ -342,11 +346,13 @@
         }
     });
 
-    speedSlider.addEventListener("change", () => {
-        isSliderActive = false;
-        sliderTarget = speedSlider.value;
-        sliderCurrent = parseFloat(speedSlider.value);
-        websocket.send(JSON.stringify({type: "speedChange", value: speedSlider.value}));
+    window.addEventListener("pointerup", () => {
+        if (isSliderActive) {
+            isSliderActive = false;
+            sliderTarget = speedSlider.value;
+            sliderCurrent = parseFloat(speedSlider.value);
+            websocket.send(JSON.stringify({type: "speedChange", value: speedSlider.value}));
+        }
     });
 
     function lerpSlider() {
